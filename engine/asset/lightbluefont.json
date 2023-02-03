@@ -1,0 +1,26 @@
+{ "frames": {
+   "lightbluefont.aseprite": {
+    "frame": { "x": 0, "y": 0, "w": 104, "h": 48 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 104, "h": 48 },
+    "sourceSize": { "w": 104, "h": 48 },
+    "duration": 100
+   }
+ },
+ "meta": {
+  "app": "http://www.aseprite.org/",
+  "version": "1.2.40-x64",
+  "image": "lightbluefont.png",
+  "format": "I8",
+  "size": { "w": 104, "h": 48 },
+  "scale": "1",
+  "frameTags": [
+  ],
+  "layers": [
+   { "name": "Layer 1", "opacity": 255, "blendMode": "normal" }
+  ],
+  "slices": [
+  ]
+ }
+}

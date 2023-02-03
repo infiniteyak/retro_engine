@@ -1,0 +1,26 @@
+{ "frames": {
+   "blackfont.aseprite": {
+    "frame": { "x": 0, "y": 0, "w": 104, "h": 24 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 104, "h": 24 },
+    "sourceSize": { "w": 104, "h": 24 },
+    "duration": 100
+   }
+ },
+ "meta": {
+  "app": "http://www.aseprite.org/",
+  "version": "1.2.40-x64",
+  "image": "blackfont.png",
+  "format": "RGBA8888",
+  "size": { "w": 104, "h": 24 },
+  "scale": "1",
+  "frameTags": [
+  ],
+  "layers": [
+   { "name": "Layer 1", "opacity": 255, "blendMode": "normal" }
+  ],
+  "slices": [
+  ]
+ }
+}
