@@ -73,7 +73,8 @@ func AddBoomerang( ecs *ecs.ECS,
     am := make(map[component.ActionId]func())
 
     tm[component.SelfDestruct_actionid] = true
-    cdm[component.SelfDestruct_actionid] = component.Cooldown{Cur:500, Max:500}
+    //cdm[component.SelfDestruct_actionid] = component.Cooldown{Cur:500, Max:500}
+    cdm[component.SelfDestruct_actionid] = component.Cooldown{Cur:300, Max:300}
     am[component.SelfDestruct_actionid] = func() {
         tm[component.SelfDestruct_actionid] = false
         tm[component.DestroySilent_actionid] = true
@@ -84,13 +85,15 @@ func AddBoomerang( ecs *ecs.ECS,
             ecs.World, 
             event.RemoveEntity{Entity:&entity},
         )
-        playerActions := component.Actions.Get(playerShipEntry)
-        playerActions.TriggerMap[component.Reload_actionid] = true
-        if caught {
-            playerActions.TriggerMap[component.IncreasePower_actionid] = true
-            event.ScoreEvent.Publish(ecs.World, event.Score{Value:10})
-        } else {
-            playerActions.TriggerMap[component.ResetPower_actionid] = true
+        if playerShipEntry.Valid() {
+            playerActions := component.Actions.Get(playerShipEntry)
+            playerActions.TriggerMap[component.Reload_actionid] = true
+            if caught {
+                playerActions.TriggerMap[component.IncreasePower_actionid] = true
+                event.ScoreEvent.Publish(ecs.World, event.Score{Value:10})
+            } else {
+                playerActions.TriggerMap[component.ResetPower_actionid] = true
+            }
         }
         caught = false
     }
@@ -116,7 +119,6 @@ func AddBoomerang( ecs *ecs.ECS,
     sourcePos := component.NewPositionData(playerPos.Point.X, playerPos.Point.Y)
     curAngle := gMath.Pi
     am[component.ReturnProjectile_actionid] = func() {
-        //aimOffsetY := -15.0 // Aim slightly above the ship
         aimOffsetY := 0.0 
 
         angleRad := 0.0
@@ -128,14 +130,14 @@ func AddBoomerang( ecs *ecs.ECS,
             a := curAngle - angleRad
             a = gMath.Mod(a + gMath.Pi, 2 * gMath.Pi) - gMath.Pi 
             if a <= 0 {
-                curAngle += 0.03
+                curAngle += 0.05
             } else {
-                curAngle -= 0.03
+                curAngle -= 0.05
             }
         } 
 
         // Use move rotation and charge speed to create a vector for movement
-        moveVect := math.Vec2{X:0, Y:1.3}
+        moveVect := math.Vec2{X:0, Y:1.5}
         moveVect = moveVect.Rotate(curAngle)
 
         pd.Point.X += moveVect.X
@@ -145,12 +147,6 @@ func AddBoomerang( ecs *ecs.ECS,
         if curAngle >= (2 * gMath.Pi) {
             curAngle -= (2 * gMath.Pi)
         }
-
-        /*
-        if pd.Point.Y > (view.Area.Max.Y + 30) {
-            tm[component.DestroySilent_actionid] = true
-        }
-        */
 
         if playerShipEntry.Valid() {
             playerCollider := component.Collider.Get(playerShipEntry)
@@ -170,31 +166,29 @@ func AddBoomerang( ecs *ecs.ECS,
     })
 
     // Damage
-    damageAmount := 1.0
-    donburi.SetValue(entry, component.Damage, component.DamageData{
-        Value: &damageAmount,
-        //DestroyOnDamage: true,
-        OnDamage: func() {
-            tm[component.ReturnProjectile_actionid] = true
-            vd.Velocity.X = 0
-            vd.Velocity.Y = 0
+    dd := component.NewDamageData()
+    *dd.Value = 1.0
+    *dd.DestroyOnDamage = false
+    dd.OnDamage = func() {
+        tm[component.ReturnProjectile_actionid] = true
+        vd.Velocity.X = 0
+        vd.Velocity.Y = 0
 
-            hDcopy := *asset.AudioAssets["GenericHit"].DecodedAudio
-            hitPlayer, err := audioContext.NewPlayer(&hDcopy)
-            if err != nil {
-                log.Fatal(err)
-            }
+        hDcopy := *asset.AudioAssets["GenericHit"].DecodedAudio
+        hitPlayer, err := audioContext.NewPlayer(&hDcopy)
+        if err != nil {
+            log.Fatal(err)
+        }
 
-            hitPlayer.Rewind()
-            hitPlayer.Play()
-            power--
-            if power <= 0 {
-                damageAmount = 0
-            }
-        },
-    })
+        hitPlayer.Rewind()
+        hitPlayer.Play()
+        power--
+        if power <= 0 {
+            *dd.Value = 0
+        }
+    }
+    donburi.SetValue(entry, component.Damage, dd)
 
-    //fDcopy := *asset.FireD
     fDcopy := *asset.AudioAssets["SciFiProjectile"].DecodedAudio
     firePlayer, err := audioContext.NewPlayer(&fDcopy)
     if err != nil {

@@ -84,6 +84,7 @@ func (this *Game) LoadInfoScene() {
         enemyXTween1,
         nil,
         scoreDelay,
+        "AlienD",
         this.screenView,
     )
 
@@ -118,6 +119,7 @@ func (this *Game) LoadInfoScene() {
         enemyXTween2,
         nil,
         scoreDelay,
+        "AlienC",
         this.screenView,
     )
 
@@ -152,6 +154,7 @@ func (this *Game) LoadInfoScene() {
         enemyXTween3,
         nil,
         scoreDelay,
+        "AlienB",
         this.screenView,
     )
 
@@ -186,6 +189,7 @@ func (this *Game) LoadInfoScene() {
         enemyXTween4,
         nil,
         scoreDelay,
+        "AlienA",
         this.screenView,
     )
 
@@ -211,7 +215,7 @@ func (this *Game) LoadInfoScene() {
     logoText := entity.AddNormalText(
         this.ecs, 
         float64(this.screenView.Area.Max.X / 2), 
-        float64(this.screenView.Area.Min.Y + 240),
+        float64(this.screenView.Area.Min.Y + 260),
         this.screenView,
         "PurpleFont",
         "www.infiniteyak.com",

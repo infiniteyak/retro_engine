@@ -6,7 +6,7 @@ import (
 
 type ActionId int
 
-// TODO fix this
+// TODO fix this by having the LAST value by the start of the per game ID space
 // For now this needs to have all actions from all games
 // Otherwise I need a more complicated solution for these IDs
 const (
@@ -20,6 +20,7 @@ const (
     RotateCCW_actionid
     Accelerate_actionid
     Shoot_actionid
+    ShootSecondary_actionid
     TriggerFunction_actionid
     SelfDestruct_actionid
     DestroySilent_actionid
@@ -31,6 +32,7 @@ const (
     ReturnShip_actionid
     ReturnProjectile_actionid
     Reload_actionid
+    ReloadSecondary_actionid
     IncreasePower_actionid
     ResetPower_actionid
     Follow_actionid

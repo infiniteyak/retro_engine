@@ -48,7 +48,7 @@ func (this *damage) Update(ecs *ecs.ECS) {
                     } else {
                         *targetHealth.Value -= *damage.Value
                     }
-                    if damage.DestroyOnDamage && entry.HasComponent(component.Actions) {
+                    if *damage.DestroyOnDamage && entry.HasComponent(component.Actions) {
                         acts := component.Actions.Get(entry)
                         acts.TriggerMap[component.Destroy_actionid] = true
                     }

@@ -1,4 +1,4 @@
-package entity
+package astra_entity
 
 import (
     "github.com/infiniteyak/retro_engine/engine/utility"
@@ -13,14 +13,17 @@ import (
     "log"
 )
 
-func AddBullet(ecs *ecs.ECS, pX, pY, wDist float64, velocity math.Vec2, view *utility.View, audioContext *audio.Context) *donburi.Entity {
+func AddLaser( ecs *ecs.ECS, 
+               pX, pY float64, 
+               velocity math.Vec2, 
+               view *utility.View, 
+               audioContext *audio.Context) *donburi.Entity {
     entity := ecs.Create(
         layer.Foreground, 
         component.Position, 
         component.GraphicObject,
         component.View,
         component.Velocity,
-        component.Wrap,
         component.Actions,
         component.Collider,
         component.Factions,
@@ -30,26 +33,13 @@ func AddBullet(ecs *ecs.ECS, pX, pY, wDist float64, velocity math.Vec2, view *ut
 
     entry := ecs.World.Entry(entity)
 
-    // Damage
-    dd := component.NewDamageData()
-    *dd.Value = 1.0
-    *dd.DestroyOnDamage = true
-    donburi.SetValue(entry, component.Damage, dd)
-    /*
-    damageAmount := 1.0
-    donburi.SetValue(entry, component.Damage, component.DamageData{
-        Value: &damageAmount,
-        DestroyOnDamage: true,
-    })
-    */
-
     // Factions
     factions := []component.FactionId{component.Player_factionid} //TODO should be arg
     donburi.SetValue(entry, component.Factions, factions)
 
     // Collider
     collider := component.NewColliderData()
-    collider.Hitboxes = append(collider.Hitboxes, component.NewHitbox(2, 0, 0))
+    collider.Hitboxes = append(collider.Hitboxes, component.NewHitbox(2, 0, -2))
     donburi.SetValue(entry, component.Collider, collider)
 
     // Position
@@ -59,8 +49,8 @@ func AddBullet(ecs *ecs.ECS, pX, pY, wDist float64, velocity math.Vec2, view *ut
     // Graphic Object
     gobj := component.NewGraphicObjectData()
     nsd := component.SpriteData{}
-    nsd.Load("SimpleBullet", nil)
-    nsd.SetPlaySpeed(0.2) //TODO should be constant
+    nsd.Load("Laser", nil)
+    nsd.Play("")
     gobj.Renderables = append(gobj.Renderables, &nsd)
     donburi.SetValue(entry, component.GraphicObject, gobj)
 
@@ -71,18 +61,13 @@ func AddBullet(ecs *ecs.ECS, pX, pY, wDist float64, velocity math.Vec2, view *ut
     vd := component.VelocityData{Velocity: &velocity}
     donburi.SetValue(entry, component.Velocity, vd)
 
-    // Wrap
-    wrap := component.WrapData{Distance: new(float64)}
-    *wrap.Distance = wDist
-    donburi.SetValue(entry, component.Wrap, wrap)
-
     // Actions
     tm := make(map[component.ActionId]bool)
     cdm := make(map[component.ActionId]component.Cooldown)
     am := make(map[component.ActionId]func())
 
     tm[component.SelfDestruct_actionid] = true
-    cdm[component.SelfDestruct_actionid] = component.Cooldown{Cur:100, Max:100}
+    cdm[component.SelfDestruct_actionid] = component.Cooldown{Cur:50, Max:50}
     am[component.SelfDestruct_actionid] = func() {
         tm[component.SelfDestruct_actionid] = false
         tm[component.DestroySilent_actionid] = true
@@ -95,12 +80,6 @@ func AddBullet(ecs *ecs.ECS, pX, pY, wDist float64, velocity math.Vec2, view *ut
     }
 
     am[component.Destroy_actionid] = func() {
-        AddSmallExplosion(
-            ecs, 
-            pd.Point.X, 
-            pd.Point.Y, 
-            view,
-        )
         //hDcopy := *asset.HitD
         hDcopy := *asset.AudioAssets["GenericHit"].DecodedAudio
         hitPlayer, err := audioContext.NewPlayer(&hDcopy)
@@ -122,7 +101,32 @@ func AddBullet(ecs *ecs.ECS, pX, pY, wDist float64, velocity math.Vec2, view *ut
         ActionMap: am,
     })
 
-    //fDcopy := *asset.FireD
+    // Damage
+    dd := component.NewDamageData()
+    *dd.Value = 1.0
+    *dd.DestroyOnDamage = true
+    /*
+    dd.OnDamage = func() {
+        tm[component.ReturnProjectile_actionid] = true
+        vd.Velocity.X = 0
+        vd.Velocity.Y = 0
+
+        hDcopy := *asset.AudioAssets["GenericHit"].DecodedAudio
+        hitPlayer, err := audioContext.NewPlayer(&hDcopy)
+        if err != nil {
+            log.Fatal(err)
+        }
+
+        hitPlayer.Rewind()
+        hitPlayer.Play()
+        power--
+        if power <= 0 {
+            *dd.Value = 0
+        }
+    }
+    */
+    donburi.SetValue(entry, component.Damage, dd)
+
     fDcopy := *asset.AudioAssets["SciFiProjectile"].DecodedAudio
     firePlayer, err := audioContext.NewPlayer(&fDcopy)
     if err != nil {

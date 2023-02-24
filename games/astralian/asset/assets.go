@@ -14,6 +14,7 @@ import (
     thruster "github.com/infiniteyak/retro_engine/engine/asset/thruster"
     wave "github.com/infiniteyak/retro_engine/engine/asset/wave"
     boomerang "github.com/infiniteyak/retro_engine/games/astralian/asset/boomerang"
+    laser "github.com/infiniteyak/retro_engine/games/astralian/asset/laser"
     ship "github.com/infiniteyak/retro_engine/games/astralian/asset/ship"
     alien_a "github.com/infiniteyak/retro_engine/games/astralian/asset/alien_a"
     alien_b "github.com/infiniteyak/retro_engine/games/astralian/asset/alien_b"
@@ -41,6 +42,7 @@ func InitAudioAssets() {
 func InitSpriteAssets() {
     //Game specific assets
     asset.LoadSpriteAsset("Boomerang", boomerang.Json, boomerang.Png)
+    asset.LoadSpriteAsset("Laser", laser.Json, laser.Png)
     asset.LoadSpriteAsset("AstralianShip", ship.Json, ship.Png)
     asset.LoadSpriteAsset("AlienA", alien_a.Json, alien_a.Png)
     asset.LoadSpriteAsset("AlienB", alien_b.Json, alien_b.Png)

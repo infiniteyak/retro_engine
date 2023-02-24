@@ -8,6 +8,9 @@ import (
 type GameOver struct {}
 var GameOverEvent = events.NewEventType[GameOver]()
 
+type ScreenClear struct {}
+var ScreenClearEvent = events.NewEventType[ScreenClear]()
+
 type RegisterCleanupFunc struct {
     Function func()
 }

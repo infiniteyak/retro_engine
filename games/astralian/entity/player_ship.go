@@ -37,8 +37,8 @@ func AddPlayerShip( ecs *ecs.ECS,
     entry := ecs.World.Entry(entity)
 
     // Damage
-    damageAmount := 1.0
-    dD := component.DamageData{Value: &damageAmount}
+    dD := component.NewDamageData()
+    *dD.Value = 1.0
     donburi.SetValue(entry, component.Damage, dD)
 
     // Factions
@@ -83,6 +83,7 @@ func AddPlayerShip( ecs *ecs.ECS,
     im[component.MoveLeft_actionid] = ebiten.KeyLeft
     im[component.MoveRight_actionid] = ebiten.KeyRight
     im[component.Shoot_actionid] = ebiten.KeySpace
+    im[component.ShootSecondary_actionid] = ebiten.KeyControl
     donburi.SetValue(entry, component.Inputs, component.InputData{Mapping: im})
 
     // Actions
@@ -94,7 +95,7 @@ func AddPlayerShip( ecs *ecs.ECS,
     am := make(map[component.ActionId]func())
 
     // Shoot
-    bulletVelocity := dmath.Vec2{X:0, Y:-1.3}
+    bulletVelocity := dmath.Vec2{X:0, Y:-2.0}
     readyToFire := true
     power := 1
     am[component.Shoot_actionid] = func() {
@@ -102,24 +103,28 @@ func AddPlayerShip( ecs *ecs.ECS,
         cooldown := component.Cooldown{Cur:max, Max:max}
         cdm[component.Shoot_actionid] = cooldown
 
-        //ti := gobj.TransInfo
-        //bulletVector := bulletVelocity.Rotate(*ti.Rotation)
-        //bulletVector = vd.Velocity.Add(bulletVector) //TODO could be interesting
-
-        //TODO there's some bug where it crashes if the boomerang is out when you respawn
-
-        // TODO Make the bullet spawn at the front of the ship, not the middle
         if readyToFire {
-            AddBoomerang(ecs, pd.Point.X, pd.Point.Y, bulletVelocity, view, audioContext, power, &entity) //TODO global audio context?
+            AddBoomerang(ecs, pd.Point.X, pd.Point.Y, bulletVelocity, view, audioContext, power, &entity)
             readyToFire = false
-            shipSd.Play("Idle") //TODO add this to other areas?
+            shipSd.Play("Idle")
         }
     }
 
     am[component.Reload_actionid] = func() {
         tm[component.Reload_actionid] = false
         readyToFire = true
-        shipSd.Play("Ready") //TODO add this to other areas?
+        shipSd.Play("Ready")
+    }
+
+    cdm[component.ShootSecondary_actionid] = component.Cooldown{Cur:50, Max:75}
+    secondaryBulletVelocity := dmath.Vec2{X:0, Y:-2.0}
+    am[component.ShootSecondary_actionid] = func() {
+        max := cdm[component.ShootSecondary_actionid].Max
+        cooldown := component.Cooldown{Cur:max, Max:max}
+        cdm[component.ShootSecondary_actionid] = cooldown
+
+        AddLaser(ecs, pd.Point.X-3, pd.Point.Y-4, secondaryBulletVelocity, view, audioContext)
+        AddLaser(ecs, pd.Point.X+3, pd.Point.Y-4, secondaryBulletVelocity, view, audioContext)
     }
 
     am[component.IncreasePower_actionid] = func() {
@@ -129,7 +134,9 @@ func AddPlayerShip( ecs *ecs.ECS,
 
     am[component.ResetPower_actionid] = func() {
         tm[component.ResetPower_actionid] = false
-        power = 1
+        if power > 1 {
+            power -= 1
+        }
     }
 
     // Shield - actually turns off shield

@@ -11,6 +11,22 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/audio"
 )
 
+type alienFormationData struct {
+    ecs *ecs.ECS
+    entry *donburi.Entry
+    entity *donburi.Entity
+    audioContext *audio.Context
+
+    actions component.ActionsData
+    position component.PositionData
+    view component.ViewData
+
+    playerPos *component.PositionData
+    ships []*donburi.Entry
+    shipSlots map[*donburi.Entry]component.PositionData
+    sendCd int
+}
+
 func findExtremeShipX(ships []*donburi.Entry) (float64, float64) {
     left := component.Position.Get(ships[0]).Point.X
     right := left
@@ -34,33 +50,12 @@ func findExtremeShipX(ships []*donburi.Entry) (float64, float64) {
     return left, right
 }
 
-func AddAlienFormation(ecs *ecs.ECS, x, y float64, view *utility.View, playerPos *component.PositionData, audioContext *audio.Context) *donburi.Entity {
-    entity := ecs.Create(
-        layer.Foreground, 
-        component.Position, 
-        component.View,
-        component.Actions,
-    )
-    event.RegisterEntityEvent.Publish(ecs.World, event.RegisterEntity{Entity:&entity})
-
-    entry := ecs.World.Entry(entity)
-
-    // Position
-    pd := component.NewPositionData(x, y)
-    donburi.SetValue(entry, component.Position, pd)
-
-    // View
-    donburi.SetValue(entry, component.View, component.ViewData{View:view})
-
-    // SHIPS
-
-    //height and width plus padding...
-    sw := 14.0 //TODO make this a const
-    sh := 14.0 
+func (this *alienFormationData) initConvoy(x, y float64) {
+    sw := AlienConvoySpacing
+    sh := AlienConvoySpacing
 
     columns := 10
     rows := 6
-
     pattern := [][]int {
         {0, 0, 0, 4, 0, 0, 4, 0, 0, 0,},
         {0, 0, 3, 3, 3, 3, 3, 3, 0, 0,},
@@ -70,8 +65,8 @@ func AddAlienFormation(ecs *ecs.ECS, x, y float64, view *utility.View, playerPos
         {0, 0, 1, 1, 1, 1, 1, 1, 0, 0,},
     }
 
-    ships := []*donburi.Entry{}
-    shipSlots := map[*donburi.Entry]component.PositionData{}
+    this.ships = []*donburi.Entry{}
+    this.shipSlots = map[*donburi.Entry]component.PositionData{}
     var curOffsetY float64 = 0
     bosses := []*donburi.Entry{}
     defenderCount := 0
@@ -102,12 +97,12 @@ func AddAlienFormation(ecs *ecs.ECS, x, y float64, view *utility.View, playerPos
                         curBoss = bosses[bossIndex]
                     }
                 }
-                ship_entry := ecs.World.Entry(*AddAlien(ecs, x + curOffsetX, y + curOffsetY, view, audioContext, playerPos, aType, curBoss))
-                ships = append(ships, ship_entry)
+                ship_entry := this.ecs.World.Entry(*AddAlien(this.ecs, x + curOffsetX, y + curOffsetY, this.view.View, this.audioContext, this.playerPos, aType, curBoss))
+                this.ships = append(this.ships, ship_entry)
                 if aType == Grey_alientype {
                     bosses = append(bosses, ship_entry)
                 }
-                shipSlots[ship_entry] = component.NewPositionData(x + curOffsetX, y + curOffsetY)
+                this.shipSlots[ship_entry] = component.NewPositionData(x + curOffsetX, y + curOffsetY)
             }
             curOffsetX += sw
         }
@@ -117,103 +112,155 @@ func AddAlienFormation(ecs *ecs.ECS, x, y float64, view *utility.View, playerPos
     // Creates an event to remove ships from formation when destroyed
     removeFromFormationFunc := func(w donburi.World, event event.RemoveFromFormation) {
         new_ships := []*donburi.Entry{}
-        for i, _ := range ships {
-            if ships[i] == event.Entry {
-                ecs.World.Remove(ships[i].Entity())
+        for i, _ := range this.ships {
+            if this.ships[i] == event.Entry {
+                this.ecs.World.Remove(this.ships[i].Entity())
             } else {
-                new_ships = append(new_ships, ships[i])
+                new_ships = append(new_ships, this.ships[i])
             }
         }
-        ships = new_ships
+        this.ships = new_ships
     }
-    event.RemoveFromFormationEvent.Subscribe(ecs.World, removeFromFormationFunc)
+    event.RemoveFromFormationEvent.Subscribe(this.ecs.World, removeFromFormationFunc)
     // This will clean up the above event when the scene ends
     event.RegisterCleanupFuncEvent.Publish(
-        ecs.World, 
+        this.ecs.World, 
         event.RegisterCleanupFunc{
             Function: func() {
-                event.RemoveFromFormationEvent.Unsubscribe(ecs.World, removeFromFormationFunc)
+                event.RemoveFromFormationEvent.Unsubscribe(this.ecs.World, removeFromFormationFunc)
             },
         },
     )
+}
+
+func AddAlienFormation(ecs *ecs.ECS, 
+                       x, y float64, 
+                       view *utility.View, 
+                       playerPos *component.PositionData, 
+                       audioContext *audio.Context,
+                       wave int) *donburi.Entity {
+    afd := &alienFormationData{}
+    afd.ecs = ecs
+
+    afd.playerPos = playerPos //so the AI can track the player ship
+
+    entity := afd.ecs.Create(
+        layer.Foreground, 
+        component.Position, 
+        component.View,
+        component.Actions,
+    )
+    afd.entity = &entity
+
+    event.RegisterEntityEvent.Publish(ecs.World, event.RegisterEntity{Entity:afd.entity})
+
+    afd.entry = ecs.World.Entry(*afd.entity)
+
+    afd.audioContext = audioContext
+
+    // Position
+    afd.position = component.NewPositionData(x, y)
+    donburi.SetValue(afd.entry, component.Position, afd.position)
+
+    // View
+    afd.view = component.ViewData{View:view}
+    donburi.SetValue(afd.entry, component.View, afd.view)
+
+    // SHIPS
+    afd.initConvoy(x,y)
 
     // Actions
-    tm := make(map[component.ActionId]bool)
-    tm[component.MoveRight_actionid] = true //Start out moving right
-    tm[component.SendShip_actionid] = true 
-    cdm := make(map[component.ActionId]component.Cooldown)
-    cdm[component.SendShip_actionid] = component.Cooldown{Cur:200, Max:200}
-    am := make(map[component.ActionId]func())
+    afd.actions = component.NewActions()
 
-    speed := AlienConvoySpeed
-    am[component.MoveRight_actionid] = func() {
-        if len(ships) == 0 {
-            //TODO dispatch game won event?
+    afd.sendCd = AlienConvoySendCd - (30 * (wave-1))
+    print(afd.sendCd)
+    if afd.sendCd < AlienConvoySendInitCd {
+        afd.sendCd = AlienConvoySendInitCd 
+    }
+
+    afd.actions.TriggerMap[component.MoveRight_actionid] = true //Start out moving right
+    afd.actions.TriggerMap[component.SendShip_actionid] = true //Dispatch ships
+    afd.actions.CooldownMap[component.SendShip_actionid] = component.Cooldown{
+        Cur:AlienConvoySendInitCd, 
+        Max:afd.sendCd,
+    }
+
+    cleared := false
+    afd.actions.ActionMap[component.Upkeep_actionid] = func() {
+        if len(afd.ships) == 0 && !cleared {
+            cleared = true
+            event.ScreenClearEvent.Publish(ecs.World, event.ScreenClear{})
             return
         }
-        _, right := findExtremeShipX(ships)
-        tempSpeed := speed
-        if right + speed >= view.Area.Max.X {
-            tempSpeed = view.Area.Max.X - right
-            tm[component.MoveRight_actionid] = false
-            tm[component.MoveLeft_actionid] = true
+    }
+
+    afd.actions.ActionMap[component.MoveRight_actionid] = func() {
+        if len(afd.ships) == 0 {
+            return
         }
-        for i, _ := range ships {
-            pos := component.Position.Get(ships[i])
-            acts := component.Actions.Get(ships[i])
+        _, right := findExtremeShipX(afd.ships)
+        tempSpeed := AlienConvoySpeed 
+        if right + AlienConvoySpeed >= afd.view.View.Area.Max.X {
+            tempSpeed = afd.view.View.Area.Max.X - right
+            afd.actions.TriggerMap[component.MoveRight_actionid] = false
+            afd.actions.TriggerMap[component.MoveLeft_actionid] = true
+        }
+        for i, _ := range afd.ships {
+            pos := component.Position.Get(afd.ships[i])
+            acts := component.Actions.Get(afd.ships[i])
 
             if tempSpeed < 0 {
                 tempSpeed = 0
             }
-            shipSlots[ships[i]].Point.X += tempSpeed
+            afd.shipSlots[afd.ships[i]].Point.X += tempSpeed
             
             if  !acts.TriggerMap[component.Charge_actionid] &&
-                //!acts.TriggerMap[component.ReturnShip_actionid] &&
                 !acts.TriggerMap[component.Follow_actionid] {
-                pos.Point.X = shipSlots[ships[i]].Point.X 
+                pos.Point.X = afd.shipSlots[afd.ships[i]].Point.X 
             }
         }
     }
-    am[component.MoveLeft_actionid] = func() {
-        if len(ships) == 0 {
+    afd.actions.ActionMap[component.MoveLeft_actionid] = func() {
+        if len(afd.ships) == 0 {
             return
         }
-        left, _ := findExtremeShipX(ships)
-        tempSpeed := speed
-        if left - speed <= view.Area.Min.X {
-            tempSpeed = view.Area.Min.X + left
-            tm[component.MoveLeft_actionid] = false
-            tm[component.MoveRight_actionid] = true
+        left, _ := findExtremeShipX(afd.ships)
+        tempSpeed := AlienConvoySpeed 
+        if left - AlienConvoySpeed <= afd.view.View.Area.Min.X {
+            tempSpeed = afd.view.View.Area.Min.X + left
+            afd.actions.TriggerMap[component.MoveLeft_actionid] = false
+            afd.actions.TriggerMap[component.MoveRight_actionid] = true
         }
-        for i, _ := range ships {
-            pos := component.Position.Get(ships[i]) //.Point.X
-            acts := component.Actions.Get(ships[i])
+        for i, _ := range afd.ships {
+            pos := component.Position.Get(afd.ships[i])
+            acts := component.Actions.Get(afd.ships[i])
 
             if tempSpeed < 0 {
                 tempSpeed = 0
             }
-            shipSlots[ships[i]].Point.X -= tempSpeed
+            afd.shipSlots[afd.ships[i]].Point.X -= tempSpeed
 
             if  !acts.TriggerMap[component.Charge_actionid] &&
-                //!acts.TriggerMap[component.ReturnShip_actionid] &&
                 !acts.TriggerMap[component.Follow_actionid] {
-                pos.Point.X = shipSlots[ships[i]].Point.X 
+                pos.Point.X = afd.shipSlots[afd.ships[i]].Point.X 
             }
         }
     }
-    am[component.SendShip_actionid] = func() {
-        if len(ships) == 0 {
-            //TODO dispatch game won event?
+    afd.actions.ActionMap[component.SendShip_actionid] = func() {
+        if len(afd.ships) == 0 {
             return
         }
-        r := rand.Intn(len(ships))
+        r := rand.Intn(len(afd.ships))
 
-        acts := component.Actions.Get(ships[r])
+        acts := component.Actions.Get(afd.ships[r])
 
         if acts.TriggerMap[component.Charge_actionid] ||
            acts.TriggerMap[component.Follow_actionid] ||
            acts.TriggerMap[component.ReturnShip_actionid] {
-            cdm[component.SendShip_actionid] = component.Cooldown{Cur:100, Max:600} 
+            afd.actions.CooldownMap[component.SendShip_actionid] = component.Cooldown{
+                Cur: AlienConvoySendInitCd, 
+                Max: AlienConvoySendCd,
+            } 
             return
         }
 
@@ -223,14 +270,13 @@ func AddAlienFormation(ecs *ecs.ECS, x, y float64, view *utility.View, playerPos
             Max:AlienShootDelay,
         }
  
-        cdm[component.SendShip_actionid] = component.Cooldown{Cur:600, Max:600} 
+        afd.actions.CooldownMap[component.SendShip_actionid] = component.Cooldown{
+            Cur: afd.sendCd, 
+            Max: afd.sendCd,
+        } 
     }
 
-    donburi.SetValue(entry, component.Actions, component.ActionsData{
-        TriggerMap: tm,
-        CooldownMap: cdm,
-        ActionMap: am,
-    })
+    donburi.SetValue(afd.entry, component.Actions, afd.actions)
 
     return &entity
 }

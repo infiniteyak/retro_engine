@@ -18,11 +18,15 @@ var frameStart int //used for syncing up animations
 
 const (
     AlienConvoySpeed = 0.1
+    AlienConvoySpacing = 14.0
+    AlienConvoySendInitCd = 100
+    AlienConvoySendCd = 600
+
     AlienChargeSpeed = 0.5
     AlienTurnSpeed = 0.01
     AlienReturnSpeed = 0.5
     AlienDamage = 1.0
-    AlienShootCoolDown = 100
+    AlienShootCoolDown = 80
     AlienShootDelay = 300
     AlienBulletSpeed = 1.3
     AlienHealth = 1.0
@@ -30,6 +34,7 @@ const (
     AlienHitOffsetX = 0
     AlienHitOffsetY = 0
     BlueAlienPointValue = 30
+    AlienAimOffsetY = -15.0
 )
 
 type AlienType int
@@ -42,14 +47,6 @@ const (
     Grey_alientype
 )
 
-// Alien type to the function that initializes that type
-var alienInitMap = map[AlienType]func(ad *alienData) {
-    Blue_alientype: initBlueAlien,
-    Purple_alientype: initPurpleAlien,
-    Green_alientype: initGreenAlien,
-    Grey_alientype: initGreyAlien,
-}
-
 // Alien type to the name of the sprite to use for that type
 var alienSpriteMap = map[AlienType]string {
     Blue_alientype: "AlienA",
@@ -58,100 +55,191 @@ var alienSpriteMap = map[AlienType]string {
     Grey_alientype: "AlienD",
 }
 
-//TODO maybe these should be lowercase? (and above)
+// Alien type to base point value for destroying alien
+var alienPointMap = map[AlienType]int {
+    Blue_alientype: 30,
+    Purple_alientype: 40,
+    Green_alientype: 50,
+    Grey_alientype: 60,
+}
+
 type alienData struct {
-    Ecs *ecs.ECS
-    Entry *donburi.Entry // You can get this from ecs and entity, but easier this way
-    Entity *donburi.Entity
-    AudioContext *audio.Context
+    ecs *ecs.ECS
+    entry *donburi.Entry
+    entity *donburi.Entity
+    audioContext *audio.Context
 
-    Factions component.FactionsData
-    Damage component.DamageData
-    Health component.HealthData
-    Collider component.ColliderData
-    Position component.PositionData
-    View component.ViewData
-    Velocity component.VelocityData
-    GraphicObject component.GraphicObjectData
-    Actions component.ActionsData
+    factions component.FactionsData
+    damage component.DamageData
+    health component.HealthData
+    collider component.ColliderData
+    position component.PositionData
+    view component.ViewData
+    velocity component.VelocityData
+    graphicObject component.GraphicObjectData
+    actions component.ActionsData
 
-    PointValue int
-    Type AlienType
-    ReturnY float64
-    PlayerPos *component.PositionData
-    Boss *donburi.Entry
+    pointValue int
+    aType AlienType
+    returnY float64
+    playerPos *component.PositionData
+    boss *donburi.Entry
+    curAngle float64
+    strafeVal float64
+    strafeSet bool
+}
+
+// Move the ship, if strafe is set it will use input strafe mod value
+func (this *alienData) move(strafeMod float64) {
+    if this.strafeSet {
+        this.position.Point.X += strafeMod
+        this.position.Point.Y += AlienChargeSpeed/ 1.5
+    } else {
+        moveVect := math.Vec2{X:0, Y:AlienChargeSpeed}
+        moveVect = moveVect.Rotate(this.curAngle)
+        this.position.Point.X += moveVect.X
+        this.position.Point.Y += moveVect.Y
+    }
+}
+
+// Calculates sin trajectory stuff, outputs strafemod for use with move
+func (this *alienData) strafe() float64 {
+    strafeMod := 0.0
+    if this.position.Point.Y > this.returnY {
+        if !this.strafeSet {
+            this.strafeVal = (gMath.Pi / this.view.View.Area.Max.X)*(this.position.Point.X)
+            this.strafeSet = true
+        }
+        strafeMod = gMath.Sin(this.strafeVal) / 2.0
+        this.strafeVal += 0.005
+    }
+    return strafeMod
+}
+
+// Turn alien towards player
+func (this *alienData) angleTowardsPlayer() {
+    // find angle of player ship
+    angleRad := gMath.Atan2(this.position.Point.X - this.playerPos.Point.X, (this.playerPos.Point.Y + AlienAimOffsetY) - this.position.Point.Y)
+
+    // Turn towards the point we're aiming at
+    a := this.curAngle - angleRad
+    a = gMath.Mod(a + gMath.Pi, 2 * gMath.Pi) - gMath.Pi 
+    if a <= 0 {
+        this.curAngle += AlienTurnSpeed
+    } else {
+        this.curAngle -= AlienTurnSpeed
+    }
+
+    // clean up if we looped around
+    if this.curAngle >= (2 * gMath.Pi) {
+        this.curAngle -= (2 * gMath.Pi)
+    }
+}
+
+// Sets animation frame to match the current rotation
+func (this *alienData) rotateAnimation() {
+    // Determine the closest animation frame for our angle and load that
+    angle := 90 + int(this.curAngle * (180.0/gMath.Pi))
+    floor := (angle/15) * 15
+    ceiling := floor + 15
+    if gMath.Abs(float64(angle - floor)) > gMath.Abs(float64(angle - ceiling)) {
+        angle = ceiling
+    } else {
+        angle = floor
+    }
+    if angle < 0 {
+        angle += 360
+    }
+    angle = angle % 360 // make sure we're in the range of our tags
+    for i := 0; i < len(this.graphicObject.Renderables); i++ {
+        this.graphicObject.Renderables[i].Play(strconv.Itoa(angle)) //tags are labeled based on 15 degree incrments
+    }
 }
 
 // Do all the things that must happen when the ship is destroyed
 func (this *alienData) destroy() {
     // Hide so it disappears right away
-    this.GraphicObject.HideAllRenderables(true)
+    this.graphicObject.HideAllRenderables(true)
 
-    AddExplosion(this.Ecs, 
-                 this.Position.Point.X, 
-                 this.Position.Point.Y, 
-                 alienSpriteMap[this.Type], 
-                 this.View.View)
+    AddExplosion(this.ecs, 
+                 this.position.Point.X, 
+                 this.position.Point.Y, 
+                 alienSpriteMap[this.aType], 
+                 this.view.View)
 
-    se := event.Score{Value:this.PointValue}
-    event.ScoreEvent.Publish(this.Ecs.World, se)
+    pointVal := this.pointValue
+    if this.actions.TriggerMap[component.Charge_actionid] ||
+       this.actions.TriggerMap[component.Follow_actionid] {
+        pointVal *= 2 // bonus points for hitting chargers
+    }
+    se := event.Score{Value:pointVal}
+    event.ScoreEvent.Publish(this.ecs.World, se)
 
-    rfe := event.RemoveFromFormation{Entry:this.Entry}
-    event.RemoveFromFormationEvent.Publish(this.Ecs.World, rfe)
+    rfe := event.RemoveFromFormation{Entry:this.entry}
+    event.RemoveFromFormationEvent.Publish(this.ecs.World, rfe)
 
-    ree := event.RemoveEntity{Entity:this.Entity}
-    event.RemoveEntityEvent.Publish( this.Ecs.World, ree)
+    ree := event.RemoveEntity{Entity:this.entity}
+    event.RemoveEntityEvent.Publish(this.ecs.World, ree)
 }
 
+func (this *alienData) prepareReturnToConvoy() {
+    this.actions.TriggerMap[component.Follow_actionid] = false
+    this.actions.TriggerMap[component.Charge_actionid] = false
+    this.actions.TriggerMap[component.ReturnShip_actionid] = true
+    this.curAngle = gMath.Pi
+    this.position.Point.Y = this.view.View.Area.Min.Y - 30
+    this.graphicObject.PlayAllRenderables("90")
+    this.strafeSet = false
+}
+
+//TODO next time we do something like this, clean up this stuff
 // Return alien to it's convoy position
 func (this *alienData) returnToConvoy() {
-    this.Actions.TriggerMap[component.Shoot_actionid] = false
+    this.actions.TriggerMap[component.Shoot_actionid] = false
 
-    //TODO common code and consts for this section
     // Orient the alien for returning
-    increments := int(this.ReturnY - this.Position.Point.Y)
+    increments := int(this.returnY - this.position.Point.Y)
     if increments <= 24 {
         tag := strconv.Itoa(270 - (15*(increments/2)))
-        this.GraphicObject.PlayAllRenderables(tag)
+        this.graphicObject.PlayAllRenderables(tag)
     }
 
     // Move the alien to it's correct position
-    if this.Position.Point.Y + AlienReturnSpeed >= this.ReturnY {
-        this.Position.Point.Y = this.ReturnY
-        this.GraphicObject.PlayAllRenderables("Idle")
-        this.Actions.TriggerMap[component.ReturnShip_actionid] = false
+    if this.position.Point.Y + AlienReturnSpeed >= this.returnY {
+        this.position.Point.Y = this.returnY
+        this.graphicObject.PlayAllRenderables("Idle")
+        this.actions.TriggerMap[component.ReturnShip_actionid] = false
     } else {
-        this.Position.Point.Y += AlienReturnSpeed
+        this.position.Point.Y += AlienReturnSpeed
     }
 }
 
 func (this *alienData) shoot() {
-    //TODO think about cooldowns
     cd := component.Cooldown{Cur:AlienShootCoolDown, Max:AlienShootCoolDown}
-    this.Actions.CooldownMap[component.Shoot_actionid] = cd
+    this.actions.CooldownMap[component.Shoot_actionid] = cd
 
     bulletVelocity := math.Vec2{X:0, Y:AlienBulletSpeed}
-    AddAlienBullet( //TODO interface? bullet spawn offset?
-        this.Ecs, 
-        this.Position.Point.X, 
-        this.Position.Point.Y + 4, 
+    AddAlienBullet(
+        this.ecs, 
+        this.position.Point.X, 
+        this.position.Point.Y + 4, 
         bulletVelocity, 
-        this.View.View, 
-        this.AudioContext)
+        this.view.View, 
+        this.audioContext)
 }
 
-func AddAlien( ecs *ecs.ECS, //TODO can I make this global? or pass in game object? interface?
-               x, y float64, //TODO can I make this better? and standard?
+func AddAlien( ecs *ecs.ECS,
+               x, y float64,
                view *utility.View, 
-               audioContext *audio.Context, //TODO could/should this be global?
-               playerPos *component.PositionData, //TODO improve position data
+               audioContext *audio.Context,
+               playerPos *component.PositionData,
                aType AlienType,
-               boss *donburi.Entry ) *donburi.Entity { //TODO does anything actually use return?
+               boss *donburi.Entry ) *donburi.Entity {
     ad := &alienData{}
-    ad.Ecs = ecs
+    ad.ecs = ecs
 
-    entity := ad.Ecs.Create(
-        layer.Foreground, // TODO argument?
+    entity := ad.ecs.Create(
+        layer.Foreground,
         component.Position, 
         component.GraphicObject,
         component.View,
@@ -162,86 +250,80 @@ func AddAlien( ecs *ecs.ECS, //TODO can I make this global? or pass in game obje
         component.Actions,
         component.Damage,
     )
-    ad.Entity = &entity
+    ad.entity = &entity
 
-    event.RegisterEntityEvent.Publish(ecs.World, event.RegisterEntity{Entity:ad.Entity})
+    event.RegisterEntityEvent.Publish(ecs.World, event.RegisterEntity{Entity:ad.entity})
 
-    ad.Entry = ecs.World.Entry(*ad.Entity)
+    ad.entry = ecs.World.Entry(*ad.entity)
 
-    ad.AudioContext = audioContext
+    ad.audioContext = audioContext
 
     // Factions
     factions := []component.FactionId{component.Enemy_factionid}
-    ad.Factions = component.FactionsData{Values: factions}
-    donburi.SetValue(ad.Entry, component.Factions, ad.Factions)
+    ad.factions = component.FactionsData{Values: factions}
+    donburi.SetValue(ad.entry, component.Factions, ad.factions)
 
     // Damage
-    damageAmount := AlienDamage
-    ad.Damage = component.DamageData{Value: &damageAmount}
-    donburi.SetValue(ad.Entry, component.Damage, ad.Damage)
+    ad.damage = component.NewDamageData()
+    *ad.damage.Value = AlienDamage
+    donburi.SetValue(ad.entry, component.Damage, ad.damage)
 
     // Health
     healthAmount := AlienHealth
-    ad.Health = component.HealthData{Value: &healthAmount}
-    donburi.SetValue(ad.Entry, component.Health, ad.Health)
+    ad.health = component.HealthData{Value: &healthAmount}
+    donburi.SetValue(ad.entry, component.Health, ad.health)
 
     // Collider
-    ad.Collider = component.NewColliderData()
+    ad.collider = component.NewColliderData()
     hb := component.NewHitbox(AlienHitRadius, AlienHitOffsetX, AlienHitOffsetY)
-    ad.Collider.Hitboxes = append(ad.Collider.Hitboxes, hb)
-    donburi.SetValue(ad.Entry, component.Collider, ad.Collider)
+    ad.collider.Hitboxes = append(ad.collider.Hitboxes, hb)
+    donburi.SetValue(ad.entry, component.Collider, ad.collider)
 
     // Position
-    ad.Position = component.NewPositionData(x, y)
-    donburi.SetValue(ad.Entry, component.Position, ad.Position)
+    ad.position = component.NewPositionData(x, y)
+    donburi.SetValue(ad.entry, component.Position, ad.position)
 
-    //TODO is this the best way?
-    ad.ReturnY = ad.Position.Point.Y //used to return to the original position
-    ad.PlayerPos = playerPos //so the AI can track the player ship
-    ad.Boss = boss //for when the alien has a boss to follow
+    ad.returnY = ad.position.Point.Y //used to return to the original position
+    ad.playerPos = playerPos //so the AI can track the player ship
+    ad.boss = boss //for when the alien has a boss to follow
 
     // View
-    ad.View = component.ViewData{View:view}
-    donburi.SetValue(ad.Entry, component.View, ad.View)
+    ad.view = component.ViewData{View:view}
+    donburi.SetValue(ad.entry, component.View, ad.view)
 
     // Velocity
-    ad.Velocity = component.VelocityData{Velocity: &math.Vec2{}}
-    donburi.SetValue(ad.Entry, component.Velocity, ad.Velocity)
+    ad.velocity = component.VelocityData{Velocity: &math.Vec2{}}
+    donburi.SetValue(ad.entry, component.Velocity, ad.velocity)
 
-    // Graphic Object
-    /*
-    ad.GraphicObject = component.NewGraphicObjectData()
+    // Action
+    ad.actions = component.NewActions()
+    ad.actions.ActionMap[component.Destroy_actionid] = ad.destroy
+    ad.actions.ActionMap[component.ReturnShip_actionid] = ad.returnToConvoy
+    ad.actions.ActionMap[component.Shoot_actionid] = ad.shoot
+    donburi.SetValue(ad.entry, component.Actions, ad.actions)
+
+    ad.aType = aType
+    ad.pointValue = alienPointMap[ad.aType]
+
+    //TODO need to make a slice of pointers?
+    ad.graphicObject = component.NewGraphicObjectData()
     nsd := component.SpriteData{}
-    nsd.Load(sprite, nil)
+    nsd.Load(alienSpriteMap[ad.aType], nil)
     nsd.Play("Idle")
     nsd.SetFrame(frameStart)
     frameStart = (frameStart + rand.Intn(3)) % 10
-    ad.GraphicObject.Renderables = append(ad.GraphicObject.Renderables, &nsd)
-    donburi.SetValue(ad.Entry, component.GraphicObject, ad.GraphicObject)
-    */
+    ad.graphicObject.Renderables = append(ad.graphicObject.Renderables, &nsd)
+    donburi.SetValue(ad.entry, component.GraphicObject, ad.graphicObject)
 
-    // Action
-    ad.Actions = component.NewActions()
-    ad.Actions.ActionMap[component.Destroy_actionid] = ad.destroy
-    ad.Actions.ActionMap[component.ReturnShip_actionid] = ad.returnToConvoy
-    ad.Actions.ActionMap[component.Shoot_actionid] = ad.shoot
-    donburi.SetValue(ad.Entry, component.Actions, ad.Actions)
+    ad.curAngle = gMath.Pi
 
-    /*
-    ad.Type = aType
     ad.init()
-    */
 
-    alienInitMap[aType](ad)
-    //initBlueAlien(ad) //TODO add functionality to choose type
-    //initPurpleAlien(ad) //TODO add functionality to choose type
-
-    return ad.Entity
+    return ad.entity
 }
 
-/*
 func (this *alienData) init() {
-    switch this.Type {
+    switch this.aType {
     case Blue_alientype:
         this.initBlue()
     case Purple_alientype:
@@ -252,492 +334,136 @@ func (this *alienData) init() {
         this.initGrey()
     }
 }
-*/
 
-func initBlueAlien(ad *alienData) {
-    //TODO okay this kind of works, but for some reason I can't modify the 
-    // do the donburi.SetValue above and then modify the slice later. I think
-    // I need to make renderables a pointer to a slice or something? Probably
-    // all the component data types need to have their members as pointers so
-    // we can manipulate them like this... for now I'm just doing it here...
-    spriteName := "AlienA"
-    ad.GraphicObject = component.NewGraphicObjectData()
-    nsd := component.SpriteData{}
-    nsd.Load(spriteName, nil)
-    nsd.Play("Idle")
-    nsd.SetFrame(frameStart)
-    frameStart = (frameStart + rand.Intn(3)) % 10
-    ad.GraphicObject.Renderables = append(ad.GraphicObject.Renderables, &nsd)
-    donburi.SetValue(ad.Entry, component.GraphicObject, ad.GraphicObject)
+func (this *alienData) initBlue() {
+    this.actions.ActionMap[component.Charge_actionid] = func() {
+        this.actions.TriggerMap[component.Shoot_actionid] = true
 
-    ad.PointValue = BlueAlienPointValue
-    ad.Type = Blue_alientype
-
-    curAngle := gMath.Pi
-    //strafeVal := 0.0
-    strafeSet := false
-    ad.Actions.ActionMap[component.Charge_actionid] = func() {
-        ad.Actions.TriggerMap[component.Shoot_actionid] = true
-        aimOffsetY := -15.0 // Aim slightly above the ship
-
-        angleRad := 0.0
-        if ad.Position.Point.Y < (ad.PlayerPos.Point.Y + aimOffsetY) {
-            // angle towards player ship
-            angleRad = gMath.Atan2(ad.Position.Point.X - ad.PlayerPos.Point.X, (ad.PlayerPos.Point.Y + aimOffsetY) - ad.Position.Point.Y)
-
-            // Turn towards the point we're aiming at
-            a := curAngle - angleRad
-            a = gMath.Mod(a + gMath.Pi, 2 * gMath.Pi) - gMath.Pi 
-            if a <= 0 {
-                curAngle += AlienTurnSpeed
-            } else {
-                curAngle -= AlienTurnSpeed
-            }
+        if this.position.Point.Y < (this.playerPos.Point.Y + AlienAimOffsetY) {
+            this.angleTowardsPlayer()
         } 
 
-        // Use move rotation and charge speed to create a vector for movement
-        moveVect := math.Vec2{X:0, Y:AlienChargeSpeed}
-        moveVect = moveVect.Rotate(curAngle)
+        this.rotateAnimation()
 
-        // Determine the closest animation frame for our angle and load that
-        angleDeg := curAngle * (180.0/gMath.Pi)
-        //angleDeg := angleRad * (180.0/gMath.Pi)
-        angle := 90 + int(angleDeg) // TODO make this better
-        floor := (angle/15) * 15
-        ceiling := floor + 15
-        if gMath.Abs(float64(angle - floor)) > gMath.Abs(float64(angle - ceiling)) {
-            angle = ceiling
-        } else {
-            angle = floor
-        }
-        if angle < 0 {
-            angle += 360
-        }
-        angle = angle % 360 // make sure we're in the range of our tags
-        for i := 0; i < len(ad.GraphicObject.Renderables); i++ {
-            ad.GraphicObject.Renderables[i].Play(strconv.Itoa(angle)) //tags are labeled based on 15 degree incrments
-        }
+        this.move(0.0)
 
-        // Strafe mod
-        strafeMod := 0.0
-        /*
-        if moveVect.Y > 0 {
-            if !strafeSet {
-                //strafeVal = (2 * gMath.Pi / view.Area.Max.X)*(pd.Point.X)-(gMath.Pi)
-                strafeVal = (gMath.Pi / view.Area.Max.X)*(pd.Point.X)
-                strafeSet = true
-            }
-            strafeMod = gMath.Sin(strafeVal) * 2
-            strafeVal += 0.03
-        }
-        */
-
-        // move the ship
-        if strafeSet {
-            ad.Position.Point.X += strafeMod
-            ad.Position.Point.Y += AlienChargeSpeed/2
-        } else {
-            ad.Position.Point.X += moveVect.X
-            ad.Position.Point.Y += moveVect.Y
-        }
-
-        //pd.Point.X += strafeMod + moveVect.X
-        //pd.Point.Y += AlienChargeSpeed/4 + moveVect.Y
-
-
-        // clean up the current angle
-        if curAngle >= (2 * gMath.Pi) {
-            curAngle -= (2 * gMath.Pi)
-        }
-
-        if ad.Position.Point.Y > (ad.View.View.Area.Max.Y + 30) {
-            ad.Actions.TriggerMap[component.Charge_actionid] = false
-            ad.Actions.TriggerMap[component.ReturnShip_actionid] = true
-
-            //Set values for return
-            curAngle = gMath.Pi
-            ad.Position.Point.Y = ad.View.View.Area.Min.Y - 30
-            for i := 0; i < len(ad.GraphicObject.Renderables); i++ {
-                ad.GraphicObject.Renderables[i].Play("90") //tags are labeled based on 15 degree incrments
-            }
+        if this.position.Point.Y > (this.view.View.Area.Max.Y + 30) {
+            this.prepareReturnToConvoy()
         }
     }
 }
 
-func initPurpleAlien(ad *alienData) {
-    spriteName := "AlienB"
-    ad.GraphicObject = component.NewGraphicObjectData()
-    nsd := component.SpriteData{}
-    nsd.Load(spriteName, nil)
-    nsd.Play("Idle")
-    nsd.SetFrame(frameStart)
-    frameStart = (frameStart + rand.Intn(3)) % 10
-    ad.GraphicObject.Renderables = append(ad.GraphicObject.Renderables, &nsd)
-    donburi.SetValue(ad.Entry, component.GraphicObject, ad.GraphicObject)
+func (this *alienData) initPurple() {
+    this.actions.ActionMap[component.Charge_actionid] = func() {
+        this.actions.TriggerMap[component.Shoot_actionid] = true
 
-    ad.PointValue = BlueAlienPointValue
-    ad.Type = Purple_alientype
-
-    curAngle := gMath.Pi
-    strafeVal := 0.0
-    strafeSet := false
-    targetX := ad.PlayerPos.Point.X
-    targetY := ad.PlayerPos.Point.Y
-    ad.Actions.ActionMap[component.Charge_actionid] = func() {
-        ad.Actions.TriggerMap[component.Shoot_actionid] = true
-        aimOffsetY := -15.0 // Aim slightly above the ship (for movement)
-
-        angleRad := 0.0
-        if ad.Position.Point.Y < (ad.PlayerPos.Point.Y + aimOffsetY) {
-            // angle towards player ship
-            angleRad = gMath.Atan2(ad.Position.Point.X - targetX, (targetY + aimOffsetY) - ad.Position.Point.Y)
-
-            // Turn towards the point we're aiming at
-            a := curAngle - angleRad
-            a = gMath.Mod(a + gMath.Pi, 2 * gMath.Pi) - gMath.Pi 
-            if a <= 0 {
-                curAngle += AlienTurnSpeed
-            } else {
-                curAngle -= AlienTurnSpeed
-            }
+        if this.position.Point.Y < (this.playerPos.Point.Y + AlienAimOffsetY) {
+            this.angleTowardsPlayer()
         } 
 
-        // Use move rotation and charge speed to create a vector for movement
-        moveVect := math.Vec2{X:0, Y:AlienChargeSpeed}
-        moveVect = moveVect.Rotate(curAngle)
+        this.rotateAnimation()
 
-        // Determine the closest animation frame for our angle and load that
-        angle := 90 + int(curAngle * (180.0/gMath.Pi))
-        floor := (angle/15) * 15
-        ceiling := floor + 15
-        if gMath.Abs(float64(angle - floor)) > gMath.Abs(float64(angle - ceiling)) {
-            angle = ceiling
-        } else {
-            angle = floor
-        }
-        if angle < 0 {
-            angle += 360
-        }
-        angle = angle % 360 // make sure we're in the range of our tags
-        for i := 0; i < len(ad.GraphicObject.Renderables); i++ {
-            ad.GraphicObject.Renderables[i].Play(strconv.Itoa(angle)) //tags are labeled based on 15 degree incrments
-        }
+        strafeMod := this.strafe()
 
-        // Strafe mod
-        strafeMod := 0.0
-        if ad.Position.Point.Y > ad.ReturnY {
-            if !strafeSet {
-                strafeVal = (gMath.Pi / ad.View.View.Area.Max.X)*(ad.Position.Point.X)
-                strafeSet = true
-            }
-            strafeMod = gMath.Sin(strafeVal) / 2.0
-            strafeVal += 0.005
-        }
+        this.move(strafeMod)
 
-        // move the ship
-        if strafeSet {
-            ad.Position.Point.X += strafeMod
-            ad.Position.Point.Y += AlienChargeSpeed/ 1.5
-        } else {
-            ad.Position.Point.X += moveVect.X
-            ad.Position.Point.Y += moveVect.Y
-        }
-
-        // clean up the current angle
-        if curAngle >= (2 * gMath.Pi) {
-            curAngle -= (2 * gMath.Pi)
-        }
-
-        if ad.Position.Point.Y > (ad.View.View.Area.Max.Y + 30) {
-            ad.Actions.TriggerMap[component.Charge_actionid] = false
-            ad.Actions.TriggerMap[component.ReturnShip_actionid] = true
-
-            //Set values for return
-            strafeSet = false
-            curAngle = gMath.Pi
-            ad.Position.Point.Y = ad.View.View.Area.Min.Y - 30
-            for i := 0; i < len(ad.GraphicObject.Renderables); i++ {
-                ad.GraphicObject.Renderables[i].Play("90") //tags are labeled based on 15 degree incrments
-            }
+        if this.position.Point.Y > (this.view.View.Area.Max.Y + 30) {
+            this.prepareReturnToConvoy()
         }
     }
 }
 
-func initGreenAlien(ad *alienData) {
-    spriteName := "AlienC"
-    ad.GraphicObject = component.NewGraphicObjectData()
-    nsd := component.SpriteData{}
-    nsd.Load(spriteName, nil)
-    nsd.Play("Idle")
-    nsd.SetFrame(frameStart)
-    frameStart = (frameStart + rand.Intn(3)) % 10
-    ad.GraphicObject.Renderables = append(ad.GraphicObject.Renderables, &nsd)
-    donburi.SetValue(ad.Entry, component.GraphicObject, ad.GraphicObject)
-
-    ad.PointValue = BlueAlienPointValue
-    ad.Type = Purple_alientype
-
-    curAngle := gMath.Pi
-    strafeVal := 0.0
-    strafeSet := false
-    targetX := ad.PlayerPos.Point.X //TODO wait does this just happen the first time?!
-    targetY := ad.PlayerPos.Point.Y
-    ad.Actions.ActionMap[component.Charge_actionid] = func() {
+func (this *alienData) initGreen() {
+    this.actions.ActionMap[component.Charge_actionid] = func() {
         // Don't charge if our boss is still alive.
-        if ad.Boss.Valid() {
-            ad.Actions.TriggerMap[component.Charge_actionid] = false
+        if this.boss.Valid() {
+            this.actions.TriggerMap[component.Charge_actionid] = false
             return
         } 
         
-        ad.Actions.TriggerMap[component.Shoot_actionid] = true
-        aimOffsetY := -15.0 // Aim slightly above the ship (for movement)
+        this.actions.TriggerMap[component.Shoot_actionid] = true
 
-        angleRad := 0.0
-        if ad.Position.Point.Y < (ad.PlayerPos.Point.Y + aimOffsetY) {
-            // angle towards player ship
-            angleRad = gMath.Atan2(ad.Position.Point.X - targetX, (targetY + aimOffsetY) - ad.Position.Point.Y)
-
-            // Turn towards the point we're aiming at
-            a := curAngle - angleRad
-            a = gMath.Mod(a + gMath.Pi, 2 * gMath.Pi) - gMath.Pi 
-            if a <= 0 {
-                curAngle += AlienTurnSpeed
-            } else {
-                curAngle -= AlienTurnSpeed
-            }
+        if this.position.Point.Y < (this.playerPos.Point.Y + AlienAimOffsetY) {
+            this.angleTowardsPlayer()
         } 
 
-        // Use move rotation and charge speed to create a vector for movement
-        moveVect := math.Vec2{X:0, Y:AlienChargeSpeed}
-        moveVect = moveVect.Rotate(curAngle)
+        this.rotateAnimation()
 
-        // Determine the closest animation frame for our angle and load that
-        angle := 90 + int(curAngle * (180.0/gMath.Pi))
-        floor := (angle/15) * 15
-        ceiling := floor + 15
-        if gMath.Abs(float64(angle - floor)) > gMath.Abs(float64(angle - ceiling)) {
-            angle = ceiling
-        } else {
-            angle = floor
-        }
-        if angle < 0 {
-            angle += 360
-        }
-        angle = angle % 360 // make sure we're in the range of our tags
-        for i := 0; i < len(ad.GraphicObject.Renderables); i++ {
-            ad.GraphicObject.Renderables[i].Play(strconv.Itoa(angle)) //tags are labeled based on 15 degree incrments
-        }
+        strafeMod := this.strafe()
 
-        // Strafe mod
-        strafeMod := 0.0
-        if ad.Position.Point.Y > ad.ReturnY {
-            if !strafeSet {
-                strafeVal = (gMath.Pi / ad.View.View.Area.Max.X)*(ad.Position.Point.X)
-                strafeSet = true
-            }
-            strafeMod = gMath.Sin(strafeVal) / 2.0
-            strafeVal += 0.005
-        }
+        this.move(strafeMod)
 
-        // move the ship
-        if strafeSet {
-            ad.Position.Point.X += strafeMod
-            ad.Position.Point.Y += AlienChargeSpeed/ 1.5
-        } else {
-            ad.Position.Point.X += moveVect.X
-            ad.Position.Point.Y += moveVect.Y
-        }
-
-        // clean up the current angle
-        if curAngle >= (2 * gMath.Pi) {
-            curAngle -= (2 * gMath.Pi)
-        }
-
-        if ad.Position.Point.Y > (ad.View.View.Area.Max.Y + 30) {
-            ad.Actions.TriggerMap[component.Charge_actionid] = false
-            ad.Actions.TriggerMap[component.ReturnShip_actionid] = true
-
-            //Set values for return
-            strafeSet = false
-            curAngle = gMath.Pi
-            ad.Position.Point.Y = ad.View.View.Area.Min.Y - 30
-            for i := 0; i < len(ad.GraphicObject.Renderables); i++ {
-                ad.GraphicObject.Renderables[i].Play("90") //tags are labeled based on 15 degree incrments
-            }
+        if this.position.Point.Y > (this.view.View.Area.Max.Y + 30) {
+            this.prepareReturnToConvoy()
         }
     }
 
-    //determine boss offset
     bossOffsetX := 0.0
     bossOffsetY := 0.0
-    if ad.Boss.Valid() {
-		bossPos := component.Position.Get(ad.Boss).Point
-        bossOffsetX = ad.Position.Point.X - bossPos.X
-        bossOffsetY = ad.Position.Point.Y - bossPos.Y
+    if this.boss.Valid() {
+		bossPos := component.Position.Get(this.boss).Point
+        bossOffsetX = this.position.Point.X - bossPos.X
+        bossOffsetY = this.position.Point.Y - bossPos.Y
     }
-    ad.Actions.ActionMap[component.Follow_actionid] = func() {
-        if !ad.Boss.Valid() {
-            // TODO switch into some other mode? and return?
+    this.actions.ActionMap[component.Follow_actionid] = func() {
+        if !this.boss.Valid() {
+            println("boss died")
+            this.actions.TriggerMap[component.Charge_actionid] = true
+            this.actions.TriggerMap[component.Follow_actionid] = false
+            return
         } 
-        aimOffsetY := -15.0 // Aim slightly above the ship (for movement)
-        bossPos := component.Position.Get(ad.Boss).Point
-        ad.Position.Point.X = bossPos.X + bossOffsetX
-        ad.Position.Point.Y = bossPos.Y + bossOffsetY
 
-        ad.Actions.TriggerMap[component.Shoot_actionid] = true
+        this.actions.TriggerMap[component.Shoot_actionid] = true
 
-        angleRad := 0.0
-        if ad.Position.Point.Y < (ad.PlayerPos.Point.Y + aimOffsetY) {
-            // angle towards player ship
-            angleRad = gMath.Atan2(ad.Position.Point.X - targetX, (targetY + aimOffsetY) - ad.Position.Point.Y)
+        bossPos := component.Position.Get(this.boss).Point
+        this.position.Point.X = bossPos.X + bossOffsetX
+        this.position.Point.Y = bossPos.Y + bossOffsetY
 
-            // Turn towards the point we're aiming at
-            a := curAngle - angleRad
-            a = gMath.Mod(a + gMath.Pi, 2 * gMath.Pi) - gMath.Pi 
-            if a <= 0 {
-                curAngle += AlienTurnSpeed
-            } else {
-                curAngle -= AlienTurnSpeed
-            }
+
+        if this.position.Point.Y < (this.playerPos.Point.Y + AlienAimOffsetY) {
+            this.angleTowardsPlayer()
         } 
-        // Determine the closest animation frame for our angle and load that
-        angle := 90 + int(curAngle * (180.0/gMath.Pi))
-        floor := (angle/15) * 15
-        ceiling := floor + 15
-        if gMath.Abs(float64(angle - floor)) > gMath.Abs(float64(angle - ceiling)) {
-            angle = ceiling
-        } else {
-            angle = floor
-        }
-        if angle < 0 {
-            angle += 360
-        }
-        angle = angle % 360 // make sure we're in the range of our tags
-        for i := 0; i < len(ad.GraphicObject.Renderables); i++ {
-            ad.GraphicObject.Renderables[i].Play(strconv.Itoa(angle)) //tags are labeled based on 15 degree incrments
-        }
+
+        this.rotateAnimation()
     }
 
-    ad.Actions.ActionMap[component.Upkeep_actionid] = func() {
-        if ad.Boss.Valid() {
-            acts := component.Actions.Get(ad.Boss)
+    this.actions.ActionMap[component.Upkeep_actionid] = func() {
+        if this.boss.Valid() {
+            //if the boss is charging bodyguards should follow
+            acts := component.Actions.Get(this.boss)
             if acts.TriggerMap[component.Charge_actionid] &&
-               !ad.Actions.TriggerMap[component.Follow_actionid] {
-                ad.Actions.TriggerMap[component.Follow_actionid] = true
-                ad.Actions.CooldownMap[component.Shoot_actionid] = component.Cooldown{
+               !this.actions.TriggerMap[component.Follow_actionid] {
+                this.actions.TriggerMap[component.Follow_actionid] = true
+                this.actions.CooldownMap[component.Shoot_actionid] = component.Cooldown{
                     Cur:AlienShootDelay, 
                     Max:AlienShootDelay,
                 }
             }
-            if acts.TriggerMap[component.ReturnShip_actionid] {
-                ad.Actions.TriggerMap[component.Follow_actionid] = false
-                ad.Actions.TriggerMap[component.ReturnShip_actionid] = true
 
-                //Set values for return
-                ad.Position.Point.Y = ad.View.View.Area.Min.Y - 30
-                for i := 0; i < len(ad.GraphicObject.Renderables); i++ {
-                    ad.GraphicObject.Renderables[i].Play("90") //tags are labeled based on 15 degree incrments
-                }
+            //If the boss is returning so should the bodyguards 
+            if acts.TriggerMap[component.ReturnShip_actionid] {
+                this.prepareReturnToConvoy()
             }
         }
     }
 }
 
-func initGreyAlien(ad *alienData) {
-    spriteName := "AlienD"
-    ad.GraphicObject = component.NewGraphicObjectData()
-    nsd := component.SpriteData{}
-    nsd.Load(spriteName, nil)
-    nsd.Play("Idle")
-    nsd.SetFrame(frameStart)
-    frameStart = (frameStart + rand.Intn(3)) % 10
-    ad.GraphicObject.Renderables = append(ad.GraphicObject.Renderables, &nsd)
-    donburi.SetValue(ad.Entry, component.GraphicObject, ad.GraphicObject)
+func (this *alienData) initGrey() {
+    this.actions.ActionMap[component.Charge_actionid] = func() {
+        this.actions.TriggerMap[component.Shoot_actionid] = true
 
-    ad.PointValue = BlueAlienPointValue
-    ad.Type = Purple_alientype
-
-    curAngle := gMath.Pi
-    strafeVal := 0.0
-    strafeSet := false
-    targetX := ad.PlayerPos.Point.X
-    targetY := ad.PlayerPos.Point.Y
-    ad.Actions.ActionMap[component.Charge_actionid] = func() {
-        ad.Actions.TriggerMap[component.Shoot_actionid] = true
-        aimOffsetY := -15.0 // Aim slightly above the ship (for movement)
-
-        angleRad := 0.0
-        if ad.Position.Point.Y < (ad.PlayerPos.Point.Y + aimOffsetY) {
-            // angle towards player ship
-            angleRad = gMath.Atan2(ad.Position.Point.X - targetX, (targetY + aimOffsetY) - ad.Position.Point.Y)
-
-            // Turn towards the point we're aiming at
-            a := curAngle - angleRad
-            a = gMath.Mod(a + gMath.Pi, 2 * gMath.Pi) - gMath.Pi 
-            if a <= 0 {
-                curAngle += AlienTurnSpeed
-            } else {
-                curAngle -= AlienTurnSpeed
-            }
+        if this.position.Point.Y < (this.playerPos.Point.Y + AlienAimOffsetY) {
+            this.angleTowardsPlayer()
         } 
 
-        // Use move rotation and charge speed to create a vector for movement
-        moveVect := math.Vec2{X:0, Y:AlienChargeSpeed}
-        moveVect = moveVect.Rotate(curAngle)
+        this.rotateAnimation()
 
-        // Determine the closest animation frame for our angle and load that
-        angle := 90 + int(curAngle * (180.0/gMath.Pi))
-        floor := (angle/15) * 15
-        ceiling := floor + 15
-        if gMath.Abs(float64(angle - floor)) > gMath.Abs(float64(angle - ceiling)) {
-            angle = ceiling
-        } else {
-            angle = floor
-        }
-        if angle < 0 {
-            angle += 360
-        }
-        angle = angle % 360 // make sure we're in the range of our tags
-        for i := 0; i < len(ad.GraphicObject.Renderables); i++ {
-            ad.GraphicObject.Renderables[i].Play(strconv.Itoa(angle)) //tags are labeled based on 15 degree incrments
-        }
+        strafeMod := this.strafe()
 
-        // Strafe mod
-        strafeMod := 0.0
-        if ad.Position.Point.Y > ad.ReturnY {
-            if !strafeSet {
-                strafeVal = (gMath.Pi / ad.View.View.Area.Max.X)*(ad.Position.Point.X)
-                strafeSet = true
-            }
-            strafeMod = gMath.Sin(strafeVal) / 2.0
-            strafeVal += 0.005
-        }
+        this.move(strafeMod)
 
-        // move the ship
-        if strafeSet {
-            ad.Position.Point.X += strafeMod
-            ad.Position.Point.Y += AlienChargeSpeed/ 1.5
-        } else {
-            ad.Position.Point.X += moveVect.X
-            ad.Position.Point.Y += moveVect.Y
-        }
-
-        // clean up the current angle
-        if curAngle >= (2 * gMath.Pi) {
-            curAngle -= (2 * gMath.Pi)
-        }
-
-        if ad.Position.Point.Y > (ad.View.View.Area.Max.Y + 30) {
-            ad.Actions.TriggerMap[component.Charge_actionid] = false
-            ad.Actions.TriggerMap[component.ReturnShip_actionid] = true
-
-            //Set values for return
-            strafeSet = false
-            curAngle = gMath.Pi
-            ad.Position.Point.Y = ad.View.View.Area.Min.Y - 30
-            for i := 0; i < len(ad.GraphicObject.Renderables); i++ {
-                ad.GraphicObject.Renderables[i].Play("90") //tags are labeled based on 15 degree incrments
-            }
+        if this.position.Point.Y > (this.view.View.Area.Max.Y + 30) {
+            this.prepareReturnToConvoy()
         }
     }
 }

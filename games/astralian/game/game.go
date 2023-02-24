@@ -19,7 +19,7 @@ import (
 const (
     Title string = "Astralian"
     StartingShips int = 3
-    StartingWave int = 0
+    StartingWave int = 1
 )
 
 type Game struct {

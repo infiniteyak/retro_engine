@@ -70,24 +70,6 @@ func (this *Game) LoadPlayingScene() {
     )
     waveText.YAlign = entity.Top_fontaligny
 
-    asteroidsCount := 0
-    asteroidCountUpdateFunc := func(w donburi.World, event event.AsteroidsCountUpdate) {
-        asteroidsCount += event.Value
-        if asteroidsCount <= 0 {
-            this.curWave++
-            this.Transition(ScreenClear_sceneEvent)
-        }
-    }
-    event.AsteroidsCountUpdateEvent.Subscribe(this.ecs.World, asteroidCountUpdateFunc)
-    event.RegisterCleanupFuncEvent.Publish(
-        this.ecs.World, 
-        event.RegisterCleanupFunc{
-            Function: func() {
-                event.AsteroidsCountUpdateEvent.Unsubscribe(this.ecs.World, asteroidCountUpdateFunc)
-            },
-        },
-    )
-
     // Create ships text (lives)
     shipsText := entity.AddNormalText(
         this.ecs, 
@@ -101,8 +83,6 @@ func (this *Game) LoadPlayingScene() {
     shipsText.YAlign = entity.Top_fontaligny
 
     // GAME
-    //var playerPd *utility.Point
-
     gameView := utility.NewView(
         0.0, 
         hudView.Area.Max.Y,
@@ -132,7 +112,6 @@ func (this *Game) LoadPlayingScene() {
             )
         } else {
             shipsText.String = strings.Repeat("^", this.curShips) 
-            //astra_entity.AddPlayerShip(
             psEntity := astra_entity.AddPlayerShip(
                 this.ecs, 
                 float64(gameView.Area.Max.X / 2), 
@@ -140,7 +119,7 @@ func (this *Game) LoadPlayingScene() {
                 gameView,
                 this.audioContext,
             )
-            playerPos = component.Position.Get(this.ecs.World.Entry(*psEntity))
+            *playerPos = *component.Position.Get(this.ecs.World.Entry(*psEntity))
         }
     }
     event.ShipDestroyedEvent.Subscribe(this.ecs.World, shipDestFunc)
@@ -153,9 +132,37 @@ func (this *Game) LoadPlayingScene() {
         },
     )
 
+    screenClearFunc := func(w donburi.World, event event.ScreenClear) {
+        println("Screen Clear")
+        this.curWave++
+        entity.AddTitleText(
+            this.ecs, 
+            float64(gameView.Area.Max.X / 2), 
+            float64(gameView.Area.Max.Y / 2), 
+            gameView,
+            fmt.Sprintf("PREPARE FOR WAVE %03d", this.curWave),
+        )
+        
+        entity.AddInputTrigger(
+            this.ecs, 
+            ebiten.KeySpace,
+            func() {
+                this.Transition(ScreenClear_sceneEvent)
+            },
+        )
+    }
+    event.ScreenClearEvent.Subscribe(this.ecs.World, screenClearFunc)
+    event.RegisterCleanupFuncEvent.Publish(
+        this.ecs.World, 
+        event.RegisterCleanupFunc{
+            Function: func() {
+                event.ScreenClearEvent.Unsubscribe(this.ecs.World, screenClearFunc)
+            },
+        },
+    )
+
     this.GenerateStars(gameView)
 
-    //astra_entity.AddPlayerShip(
     psEntity := astra_entity.AddPlayerShip(
         this.ecs, 
         float64(gameView.Area.Max.X / 2), 
@@ -172,9 +179,9 @@ func (this *Game) LoadPlayingScene() {
         gameView,
         playerPos,
         this.audioContext,
+        this.curWave,
     )
 
-    //waveDcopy := *asset.WaveD
     waveDcopy := *asset.AudioAssets["Wave"].DecodedAudio
     wavePlayer, err := this.audioContext.NewPlayer(&waveDcopy)
     if err != nil {

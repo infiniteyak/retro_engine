@@ -11,14 +11,44 @@ import (
     "github.com/yohamta/donburi/features/math"
 	"github.com/hajimehoshi/ebiten/v2/audio"
     "log"
-    //gMath "math"
 )
+
+const (
+    AlienBulletDamage = 1.0
+    AlienBulletHitRadius = 2
+    AlienBulletHitOffsetX = 0
+    AlienBulletHitOffsetY = 0
+    AlienBulletSpriteName = "AlienBullet" 
+    AlienBulletDestroyCooldown = 500
+    AlienBulletFireSoundName = "SciFiProjectile" 
+    AlienBulletDestroySoundName = "GenericHit" 
+)
+
+type alienBulletData struct {
+    ecs *ecs.ECS
+    entry *donburi.Entry
+    entity *donburi.Entity
+    audioContext *audio.Context
+
+    factions component.FactionsData
+    damage component.DamageData
+    health component.HealthData
+    collider component.ColliderData
+    position component.PositionData
+    view component.ViewData
+    velocity component.VelocityData
+    graphicObject component.GraphicObjectData
+    actions component.ActionsData
+}
 
 func AddAlienBullet( ecs *ecs.ECS, 
                    pX, pY float64, 
                    velocity math.Vec2, 
                    view *utility.View, 
                    audioContext *audio.Context) *donburi.Entity {
+    abd := &alienBulletData{}
+    abd.ecs = ecs
+
     entity := ecs.Create(
         layer.Foreground, 
         component.Position, 
@@ -30,61 +60,68 @@ func AddAlienBullet( ecs *ecs.ECS,
         component.Factions,
         component.Damage,
     )
-    event.RegisterEntityEvent.Publish(ecs.World, event.RegisterEntity{Entity:&entity})
+    abd.entity = &entity
 
-    entry := ecs.World.Entry(entity)
+    event.RegisterEntityEvent.Publish(ecs.World, event.RegisterEntity{Entity:abd.entity})
+
+    abd.entry = ecs.World.Entry(*abd.entity)
+
+    abd.audioContext = audioContext
 
     // Factions
-    factions := []component.FactionId{component.Enemy_factionid} //TODO should be arg
-    donburi.SetValue(entry, component.Factions, factions)
+    factions := []component.FactionId{component.Enemy_factionid}
+    abd.factions = component.FactionsData{Values: factions}
+    donburi.SetValue(abd.entry, component.Factions, abd.factions)
 
     // Collider
-    collider := component.NewColliderData()
-    collider.Hitboxes = append(collider.Hitboxes, component.NewHitbox(2, 0, 0))
-    donburi.SetValue(entry, component.Collider, collider)
+    abd.collider = component.NewColliderData()
+    hb := component.NewHitbox(AlienBulletHitRadius, AlienBulletHitOffsetX, AlienBulletHitOffsetY)
+    abd.collider.Hitboxes = append(abd.collider.Hitboxes, hb)
+    donburi.SetValue(abd.entry, component.Collider, abd.collider)
 
     // Position
-    pd := component.NewPositionData(pX, pY)
-    donburi.SetValue(entry, component.Position, pd)
+    abd.position = component.NewPositionData(pX, pY)
+    donburi.SetValue(abd.entry, component.Position, abd.position)
 
     // Graphic Object
-    gobj := component.NewGraphicObjectData()
+    abd.graphicObject = component.NewGraphicObjectData()
     nsd := component.SpriteData{}
-    nsd.Load("AlienBullet", nil)
+    nsd.Load(AlienBulletSpriteName, nil)
     nsd.Play("")
-    //nsd.SetPlaySpeed(2.0) //TODO should be constant
-    gobj.Renderables = append(gobj.Renderables, &nsd)
-    donburi.SetValue(entry, component.GraphicObject, gobj)
+    abd.graphicObject.Renderables = append(abd.graphicObject.Renderables, &nsd)
+    donburi.SetValue(abd.entry, component.GraphicObject, abd.graphicObject)
 
     // View
-    donburi.SetValue(entry, component.View, component.ViewData{View:view})
+    abd.view = component.ViewData{View:view}
+    donburi.SetValue(abd.entry, component.View, abd.view)
 
     // Velocity
-    vd := component.VelocityData{Velocity: &velocity}
-    donburi.SetValue(entry, component.Velocity, vd)
+    abd.velocity = component.VelocityData{Velocity: &velocity}
+    donburi.SetValue(abd.entry, component.Velocity, abd.velocity)
 
     // Actions
-    tm := make(map[component.ActionId]bool)
-    cdm := make(map[component.ActionId]component.Cooldown)
-    am := make(map[component.ActionId]func())
+    abd.actions = component.NewActions()
 
-    tm[component.SelfDestruct_actionid] = true
-    cdm[component.SelfDestruct_actionid] = component.Cooldown{Cur:500, Max:500}
-    am[component.SelfDestruct_actionid] = func() {
-        tm[component.SelfDestruct_actionid] = false
-        tm[component.DestroySilent_actionid] = true
+    abd.actions.TriggerMap[component.SelfDestruct_actionid] = true
+    cd := component.Cooldown{
+        Cur:AlienBulletDestroyCooldown, 
+        Max:AlienBulletDestroyCooldown,
     }
-    am[component.DestroySilent_actionid] = func() {
+    abd.actions.CooldownMap[component.SelfDestruct_actionid] = cd
+    abd.actions.ActionMap[component.SelfDestruct_actionid] = func() {
+        abd.actions.TriggerMap[component.SelfDestruct_actionid] = false
+        abd.actions.TriggerMap[component.DestroySilent_actionid] = true
+    }
+    abd.actions.ActionMap[component.DestroySilent_actionid] = func() {
         event.RemoveEntityEvent.Publish(
-            ecs.World, 
-            event.RemoveEntity{Entity:&entity},
+            abd.ecs.World, 
+            event.RemoveEntity{Entity:abd.entity},
         )
     }
 
-    am[component.Destroy_actionid] = func() {
-        //hDcopy := *asset.HitD
-        hDcopy := *asset.AudioAssets["GenericHit"].DecodedAudio
-        hitPlayer, err := audioContext.NewPlayer(&hDcopy)
+    abd.actions.ActionMap[component.Destroy_actionid] = func() {
+        hDcopy := *asset.AudioAssets[AlienBulletDestroySoundName].DecodedAudio
+        hitPlayer, err := abd.audioContext.NewPlayer(&hDcopy)
         if err != nil {
             log.Fatal(err)
         }
@@ -92,29 +129,22 @@ func AddAlienBullet( ecs *ecs.ECS,
         hitPlayer.Rewind()
         hitPlayer.Play()
         event.RemoveEntityEvent.Publish(
-            ecs.World, 
-            event.RemoveEntity{Entity:&entity},
+            abd.ecs.World, 
+            event.RemoveEntity{Entity:abd.entity},
         )
     }
 
-    donburi.SetValue(entry, component.Actions, component.ActionsData{
-        TriggerMap: tm,
-        CooldownMap: cdm,
-        ActionMap: am,
-    })
+    donburi.SetValue(abd.entry, component.Actions, abd.actions)
 
     // Damage
-    damageAmount := 1.0
-    donburi.SetValue(entry, component.Damage, component.DamageData{
-        Value: &damageAmount,
-        //DestroyOnDamage: true,
-        DestroyOnDamage: true,
-    })
+    abd.damage = component.NewDamageData()
+    *abd.damage.Value = AlienBulletDamage
+    *abd.damage.DestroyOnDamage = true
+    donburi.SetValue(abd.entry, component.Damage, abd.damage)
 
-    //fDcopy := *asset.FireD
     //TODO alien fire noise?
-    fDcopy := *asset.AudioAssets["SciFiProjectile"].DecodedAudio
-    firePlayer, err := audioContext.NewPlayer(&fDcopy)
+    fDcopy := *asset.AudioAssets[AlienBulletFireSoundName].DecodedAudio
+    firePlayer, err := abd.audioContext.NewPlayer(&fDcopy)
     if err != nil {
         log.Fatal(err)
     }
@@ -122,5 +152,5 @@ func AddAlienBullet( ecs *ecs.ECS,
     firePlayer.Rewind()
     firePlayer.Play()
 
-    return &entity
+    return abd.entity
 }
