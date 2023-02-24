@@ -2,7 +2,6 @@ package game
 
 import (
 	"fmt"
-	//"github.com/infiniteyak/retro_engine/games/astralian/entity"
 	"github.com/infiniteyak/retro_engine/engine/entity"
 	"github.com/infiniteyak/retro_engine/engine/utility"
 	"sort"

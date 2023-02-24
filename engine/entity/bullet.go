@@ -31,8 +31,9 @@ func AddBullet(ecs *ecs.ECS, pX, pY, wDist float64, velocity math.Vec2, view *ut
     entry := ecs.World.Entry(entity)
 
     // Damage
+    damageAmount := 1.0
     donburi.SetValue(entry, component.Damage, component.DamageData{
-        Value: 1.0,
+        Value: &damageAmount,
         DestroyOnDamage: true,
     })
 
@@ -94,7 +95,8 @@ func AddBullet(ecs *ecs.ECS, pX, pY, wDist float64, velocity math.Vec2, view *ut
             pd.Point.Y, 
             view,
         )
-        hDcopy := *asset.HitD
+        //hDcopy := *asset.HitD
+        hDcopy := *asset.AudioAssets["GenericHit"].DecodedAudio
         hitPlayer, err := audioContext.NewPlayer(&hDcopy)
         if err != nil {
             log.Fatal(err)
@@ -114,7 +116,8 @@ func AddBullet(ecs *ecs.ECS, pX, pY, wDist float64, velocity math.Vec2, view *ut
         ActionMap: am,
     })
 
-    fDcopy := *asset.FireD
+    //fDcopy := *asset.FireD
+    fDcopy := *asset.AudioAssets["SciFiProjectile"].DecodedAudio
     firePlayer, err := audioContext.NewPlayer(&fDcopy)
     if err != nil {
         log.Fatal(err)

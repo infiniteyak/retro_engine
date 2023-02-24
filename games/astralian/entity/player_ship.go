@@ -14,7 +14,10 @@ import (
     "log"
 )
 
-func AddPlayerShip(ecs *ecs.ECS, x, y float64, view *utility.View, audioContext *audio.Context) *donburi.Entity {
+func AddPlayerShip( ecs *ecs.ECS, 
+                    x, y float64, 
+                    view *utility.View, 
+                    audioContext *audio.Context) *donburi.Entity {
     entity := ecs.Create(
         layer.Foreground, 
         component.Position, 
@@ -27,10 +30,16 @@ func AddPlayerShip(ecs *ecs.ECS, x, y float64, view *utility.View, audioContext 
         component.Collider,
         component.Health,
         component.Factions,
+        component.Damage,
         )
     event.RegisterEntityEvent.Publish(ecs.World, event.RegisterEntity{Entity:&entity})
 
     entry := ecs.World.Entry(entity)
+
+    // Damage
+    damageAmount := 1.0
+    dD := component.DamageData{Value: &damageAmount}
+    donburi.SetValue(entry, component.Damage, dD)
 
     // Factions
     factions := []component.FactionId{component.Player_factionid}
@@ -41,7 +50,7 @@ func AddPlayerShip(ecs *ecs.ECS, x, y float64, view *utility.View, audioContext 
 
     // Collider
     collider := component.NewColliderData()
-    collider.Hitboxes = append(collider.Hitboxes, component.NewHitbox(5, 0, 0))
+    collider.Hitboxes = append(collider.Hitboxes, component.NewHitbox(5, 0, -2))
     donburi.SetValue(entry, component.Collider, collider)
 
     // Velocity
@@ -63,8 +72,8 @@ func AddPlayerShip(ecs *ecs.ECS, x, y float64, view *utility.View, audioContext 
     // Graphic Object
     gobj := component.NewGraphicObjectData()
     shipSd := component.SpriteData{}
-    shipSd.Load("PlayerShip", nil)
-    shipSd.Play("Idle") //TODO add this to other areas?
+    shipSd.Load("AstralianShip", nil)
+    shipSd.Play("Ready") //TODO add this to other areas?
     gobj.Renderables = append(gobj.Renderables, &shipSd)
     donburi.SetValue(entry, component.GraphicObject, gobj)
 
@@ -85,6 +94,8 @@ func AddPlayerShip(ecs *ecs.ECS, x, y float64, view *utility.View, audioContext 
 
     // Shoot
     bulletVelocity := dmath.Vec2{X:0, Y:-1.3}
+    readyToFire := true
+    power := 1
     am[component.Shoot_actionid] = func() {
         max := cdm[component.Shoot_actionid].Max
         cooldown := component.Cooldown{Cur:max, Max:max}
@@ -95,7 +106,27 @@ func AddPlayerShip(ecs *ecs.ECS, x, y float64, view *utility.View, audioContext 
         //bulletVector = vd.Velocity.Add(bulletVector) //TODO could be interesting
 
         // TODO Make the bullet spawn at the front of the ship, not the middle
-        AddBoomerang(ecs, pd.Point.X, pd.Point.Y, bulletVelocity, view, audioContext) //TODO global audio context?
+        if readyToFire {
+            AddBoomerang(ecs, pd.Point.X, pd.Point.Y, bulletVelocity, view, audioContext, power, &entity) //TODO global audio context?
+            readyToFire = false
+            shipSd.Play("Idle") //TODO add this to other areas?
+        }
+    }
+
+    am[component.Reload_actionid] = func() {
+        tm[component.Reload_actionid] = false
+        readyToFire = true
+        shipSd.Play("Ready") //TODO add this to other areas?
+    }
+
+    am[component.IncreasePower_actionid] = func() {
+        tm[component.IncreasePower_actionid] = false
+        power++
+    }
+
+    am[component.ResetPower_actionid] = func() {
+        tm[component.ResetPower_actionid] = false
+        power = 1
     }
 
     // Shield - actually turns off shield
@@ -119,7 +150,8 @@ func AddPlayerShip(ecs *ecs.ECS, x, y float64, view *utility.View, audioContext 
             ecs.World, 
             event.RemoveEntity{Entity:&entity},
         )
-        shipDestroyedDcopy := *asset.DestroyedD
+        //shipDestroyedDcopy := *asset.DestroyedD
+        shipDestroyedDcopy := *asset.AudioAssets["PlayerShipDestroyed"].DecodedAudio
         destroyedPlayer, err := audioContext.NewPlayer(&shipDestroyedDcopy)
         if err != nil {
             log.Fatal(err)
@@ -129,6 +161,8 @@ func AddPlayerShip(ecs *ecs.ECS, x, y float64, view *utility.View, audioContext 
         destroyedPlayer.Play()
 
         event.ShipDestroyedEvent.Publish(ecs.World, event.ShipDestroyed{})
+
+        AddExplosion(ecs, pd.Point.X, pd.Point.Y, "AstralianShip", view)
     }
 
     blinkCounter := 0

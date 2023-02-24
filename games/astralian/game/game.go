@@ -2,9 +2,7 @@ package game
 
 import (
 	"os"
-	//"github.com/infiniteyak/retro_engine/games/astralian/asset"
-	//"github.com/infiniteyak/retro_engine/games/astralian/system"
-	"github.com/infiniteyak/retro_engine/engine/asset"
+	"github.com/infiniteyak/retro_engine/games/astralian/asset"
 	"github.com/infiniteyak/retro_engine/engine/system"
 
 	"github.com/infiniteyak/retro_engine/engine/scene"
@@ -56,8 +54,7 @@ func NewGame(width, height float64) *Game {
     this.audioContext = audio.NewContext(48000)
     this.InitStates()
     this.highScores = []utility.ScoreEntry{}
-    asset.InitSpriteAssets()
-    asset.InitAudioAssets()
+    astralian_assets.InitAssets()
 
     this.curScene = scene.NewScene(this.ecs)
     this.Transition(Init_sceneEvent)

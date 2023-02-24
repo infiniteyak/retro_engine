@@ -30,6 +30,7 @@ type Renderable interface {
     Init()
     Draw(screen *ebiten.Image, ti *TransformInfo)
     Animate()
+    Play(tag string)
 }
 
 type GraphicObjectData struct {
@@ -172,6 +173,9 @@ func (this *PolygonData) Load(verts []ebiten.Vertex) {
 func (this *PolygonData) Animate() {
 }
 
+func (this *PolygonData) Play(tag string) {
+}
+
 func (this *PolygonData) transform(ti *TransformInfo) []ebiten.Vertex {
     nvs := []ebiten.Vertex{}
     for i := 0; i < len(this.vertices); i++ {
@@ -245,6 +249,9 @@ func (this *StarFieldData) Generate(w, h int) {
 func (this *StarFieldData) Animate() {
 }
 
+func (this *StarFieldData) Play(tag string) {
+}
+
 func (this *StarFieldData) Draw(screen *ebiten.Image, ti *TransformInfo) {
     if *this.RenderableData.tinfo.Hide {
         return
@@ -277,6 +284,9 @@ func (this *BlackBarData) Generate(w, h int) {
 }
 
 func (this *BlackBarData) Animate() {
+}
+
+func (this *BlackBarData) Play(tag string) {
 }
 
 func (this *BlackBarData) Draw(screen *ebiten.Image, ti *TransformInfo) {

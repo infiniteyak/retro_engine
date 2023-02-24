@@ -2,12 +2,12 @@ package game
 
 import (
 	"fmt"
-	//"github.com/infiniteyak/retro_engine/games/astralian/asset"
 	"github.com/infiniteyak/retro_engine/engine/asset"
 	"github.com/infiniteyak/retro_engine/games/astralian/entity"
 	"github.com/infiniteyak/retro_engine/engine/entity"
 	"github.com/infiniteyak/retro_engine/engine/event"
 	"github.com/infiniteyak/retro_engine/engine/utility"
+	"github.com/infiniteyak/retro_engine/engine/component"
 	"strings"
 	"github.com/yohamta/donburi"
     "log"
@@ -110,6 +110,7 @@ func (this *Game) LoadPlayingScene() {
         this.screenView.Area.Max.Y - hudView.Area.Max.Y,
     )
 
+    var playerPos *component.PositionData
     shipDestFunc := func(w donburi.World, event event.ShipDestroyed) {
         this.curShips--
         if this.curShips < 0 {
@@ -131,16 +132,15 @@ func (this *Game) LoadPlayingScene() {
             )
         } else {
             shipsText.String = strings.Repeat("^", this.curShips) 
-            //psEntity := entity.AddPlayerShip(
-            astra_entity.AddPlayerShip(
+            //astra_entity.AddPlayerShip(
+            psEntity := astra_entity.AddPlayerShip(
                 this.ecs, 
                 float64(gameView.Area.Max.X / 2), 
                 float64(gameView.Area.Min.Y + 5), 
                 gameView,
                 this.audioContext,
             )
-            //playerPos := component.Position.Get(this.ecs.World.Entry(psEntity))
-            //playerPos. //TODO continue here
+            playerPos = component.Position.Get(this.ecs.World.Entry(*psEntity))
         }
     }
     event.ShipDestroyedEvent.Subscribe(this.ecs.World, shipDestFunc)
@@ -155,22 +155,27 @@ func (this *Game) LoadPlayingScene() {
 
     this.GenerateStars(gameView)
 
-    astra_entity.AddPlayerShip(
+    //astra_entity.AddPlayerShip(
+    psEntity := astra_entity.AddPlayerShip(
         this.ecs, 
         float64(gameView.Area.Max.X / 2), 
         float64(gameView.Area.Max.Y - 10), 
         gameView,
         this.audioContext,
     )
+    playerPos = component.Position.Get(this.ecs.World.Entry(*psEntity))
 
     astra_entity.AddAlienFormation(
         this.ecs, 
         float64(gameView.Area.Max.X / 2), 
         float64(gameView.Area.Min.Y + 40), 
         gameView,
+        playerPos,
+        this.audioContext,
     )
 
-    waveDcopy := *asset.WaveD
+    //waveDcopy := *asset.WaveD
+    waveDcopy := *asset.AudioAssets["Wave"].DecodedAudio
     wavePlayer, err := this.audioContext.NewPlayer(&waveDcopy)
     if err != nil {
         log.Fatal(err)

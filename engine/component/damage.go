@@ -5,8 +5,9 @@ import (
 )
 
 type DamageData struct {
-    Value float64
+    Value *float64
     DestroyOnDamage bool
+    OnDamage func() //TODO better name?
 }
 
 var Damage = donburi.NewComponentType[DamageData]()

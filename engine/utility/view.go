@@ -10,6 +10,7 @@ type Rectangle struct {
     Max Point
 } 
 
+// TODO Seriously begining to doubt the value of rectangle...
 type View struct {
     Area Rectangle
     Offset Point

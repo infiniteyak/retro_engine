@@ -27,6 +27,11 @@ const (
     Blink_actionid
     Charge_actionid
     SendShip_actionid
+    ReturnShip_actionid
+    ReturnProjectile_actionid
+    Reload_actionid
+    IncreasePower_actionid
+    ResetPower_actionid
 )
 
 type ActionsData struct {
@@ -40,4 +45,15 @@ var Actions = donburi.NewComponentType[ActionsData]()
 type Cooldown struct {
     Cur int
     Max int
+}
+
+func NewActions() ActionsData {
+    tm := make(map[ActionId]bool)
+    cdm := make(map[ActionId]Cooldown)
+    am := make(map[ActionId]func())
+    return ActionsData {
+        TriggerMap: tm,
+        CooldownMap: cdm,
+        ActionMap: am,
+    }
 }

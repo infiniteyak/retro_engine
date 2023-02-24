@@ -1,7 +1,6 @@
 package game
 
 import (
-	//"github.com/infiniteyak/retro_engine/games/astralian/entity"
 	"github.com/infiniteyak/retro_engine/engine/entity"
 	"github.com/infiniteyak/retro_engine/engine/layer"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -11,7 +10,6 @@ import (
 
 func (this *Game) LoadInfoScene() {
     println("LoadInfoScene")
-    //this.curScene.sceneId = Info_sceneId 
     this.curScene.SetId(Info_sceneId)
 
     // Add star field background
@@ -40,7 +38,6 @@ func (this *Game) LoadInfoScene() {
         line := entity.AddNormalText(
             this.ecs, 
             float64(this.screenView.Area.Max.X / 2), 
-            //this.screenView.Area.Min.Y + float64(28 + i * 15),
             this.screenView.Area.Min.Y + float64(34 + i * 15),
             this.screenView,
             "RedFont",

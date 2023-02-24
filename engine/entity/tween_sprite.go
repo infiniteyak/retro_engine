@@ -28,7 +28,7 @@ func AddTweenSprite(ecs *ecs.ECS, layer ecs.LayerID, x, y float64, xTween, yTwee
     // Graphic Object
     gobj := component.NewGraphicObjectData()
     nsd := component.SpriteData{}
-    nsd.Load("Alien1", nil)
+    nsd.Load("AlienA", nil)
     nsd.Play("Idle")
     gobj.Renderables = append(gobj.Renderables, &nsd)
     donburi.SetValue(entry, component.GraphicObject, gobj)

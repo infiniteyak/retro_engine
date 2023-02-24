@@ -1,7 +1,6 @@
 package game
 
 import (
-	//"github.com/infiniteyak/retro_engine/games/astralian/entity"
 	"github.com/infiniteyak/retro_engine/engine/entity"
 	"github.com/infiniteyak/retro_engine/engine/utility"
 	"strings"
