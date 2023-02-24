@@ -136,7 +136,7 @@ func (this *Game) LoadPlayingScene() {
             psEntity := astra_entity.AddPlayerShip(
                 this.ecs, 
                 float64(gameView.Area.Max.X / 2), 
-                float64(gameView.Area.Min.Y + 5), 
+                float64(gameView.Area.Max.Y - 10), 
                 gameView,
                 this.audioContext,
             )

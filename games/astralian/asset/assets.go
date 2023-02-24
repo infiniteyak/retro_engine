@@ -17,6 +17,8 @@ import (
     ship "github.com/infiniteyak/retro_engine/games/astralian/asset/ship"
     alien_a "github.com/infiniteyak/retro_engine/games/astralian/asset/alien_a"
     alien_b "github.com/infiniteyak/retro_engine/games/astralian/asset/alien_b"
+    alien_c "github.com/infiniteyak/retro_engine/games/astralian/asset/alien_c"
+    alien_d "github.com/infiniteyak/retro_engine/games/astralian/asset/alien_d"
     alien_bullet "github.com/infiniteyak/retro_engine/games/astralian/asset/alien_bullet"
     title_font "github.com/infiniteyak/retro_engine/games/astralian/asset/title_font"
 )
@@ -42,6 +44,8 @@ func InitSpriteAssets() {
     asset.LoadSpriteAsset("AstralianShip", ship.Json, ship.Png)
     asset.LoadSpriteAsset("AlienA", alien_a.Json, alien_a.Png)
     asset.LoadSpriteAsset("AlienB", alien_b.Json, alien_b.Png)
+    asset.LoadSpriteAsset("AlienC", alien_c.Json, alien_c.Png)
+    asset.LoadSpriteAsset("AlienD", alien_d.Json, alien_d.Png)
     asset.LoadSpriteAsset("AlienBullet", alien_bullet.Json, alien_bullet.Png)
     asset.LoadSpriteAsset("TitleFont", title_font.Json, title_font.Png)
 

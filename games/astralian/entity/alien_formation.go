@@ -16,7 +16,9 @@ func findExtremeShipX(ships []*donburi.Entry) (float64, float64) {
     right := left
     for i, _ := range ships {
         acts := component.Actions.Get(ships[i])
-        if acts.TriggerMap[component.Charge_actionid] {
+        if  acts.TriggerMap[component.Charge_actionid] ||
+            acts.TriggerMap[component.ReturnShip_actionid] ||
+            acts.TriggerMap[component.Follow_actionid] {
             continue
         }
         pos := component.Position.Get(ships[i]).Point
@@ -59,24 +61,54 @@ func AddAlienFormation(ecs *ecs.ECS, x, y float64, view *utility.View, playerPos
     columns := 10
     rows := 6
 
+    pattern := [][]int {
+        {0, 0, 0, 4, 0, 0, 4, 0, 0, 0,},
+        {0, 0, 3, 3, 3, 3, 3, 3, 0, 0,},
+        {0, 2, 2, 2, 2, 2, 2, 2, 2, 0,},
+        {1, 1, 1, 1, 1, 1, 1, 1, 1, 1,},
+        {0, 1, 1, 1, 1, 1, 1, 1, 1, 0,},
+        {0, 0, 1, 1, 1, 1, 1, 1, 0, 0,},
+    }
+
     ships := []*donburi.Entry{}
     shipSlots := map[*donburi.Entry]component.PositionData{}
     var curOffsetY float64 = 0
+    bosses := []*donburi.Entry{}
+    defenderCount := 0
+    bossIndex := 0
     for r := 0; r < rows; r++ {
         var curOffsetX float64 = sw * float64(1 - columns) / 2
         for c := 0; c < columns; c++ {
             aType := Undefined_alientype
-            /*
-            if r % 2 == 0 {
+            if pattern[r][c] == 1 {
                 aType = Blue_alientype
-            } else {
+            } else if pattern[r][c] == 2 {
                 aType = Purple_alientype
+            } else if pattern[r][c] == 3 {
+                aType = Green_alientype
+            } else if pattern[r][c] == 4 {
+                aType = Grey_alientype
             }
-            */
-            aType = Purple_alientype
-            ship_entry := ecs.World.Entry(*AddAlien(ecs, x + curOffsetX, y + curOffsetY, view, audioContext, playerPos, aType))
-            ships = append(ships, ship_entry)
-            shipSlots[ship_entry] = component.NewPositionData(x + curOffsetX, y + curOffsetY)
+            if aType != Undefined_alientype { //TODO this is kind of hacky
+                var curBoss *donburi.Entry
+                if aType == Green_alientype {
+                    if defenderCount >= 3 {
+                        bossIndex++
+                        defenderCount = 0
+                    } else {
+                        defenderCount++
+                    }
+                    if len(bosses) > bossIndex {
+                        curBoss = bosses[bossIndex]
+                    }
+                }
+                ship_entry := ecs.World.Entry(*AddAlien(ecs, x + curOffsetX, y + curOffsetY, view, audioContext, playerPos, aType, curBoss))
+                ships = append(ships, ship_entry)
+                if aType == Grey_alientype {
+                    bosses = append(bosses, ship_entry)
+                }
+                shipSlots[ship_entry] = component.NewPositionData(x + curOffsetX, y + curOffsetY)
+            }
             curOffsetX += sw
         }
         curOffsetY += sh
@@ -135,7 +167,9 @@ func AddAlienFormation(ecs *ecs.ECS, x, y float64, view *utility.View, playerPos
             }
             shipSlots[ships[i]].Point.X += tempSpeed
             
-            if !acts.TriggerMap[component.Charge_actionid] {
+            if  !acts.TriggerMap[component.Charge_actionid] &&
+                //!acts.TriggerMap[component.ReturnShip_actionid] &&
+                !acts.TriggerMap[component.Follow_actionid] {
                 pos.Point.X = shipSlots[ships[i]].Point.X 
             }
         }
@@ -160,7 +194,9 @@ func AddAlienFormation(ecs *ecs.ECS, x, y float64, view *utility.View, playerPos
             }
             shipSlots[ships[i]].Point.X -= tempSpeed
 
-            if !acts.TriggerMap[component.Charge_actionid] {
+            if  !acts.TriggerMap[component.Charge_actionid] &&
+                //!acts.TriggerMap[component.ReturnShip_actionid] &&
+                !acts.TriggerMap[component.Follow_actionid] {
                 pos.Point.X = shipSlots[ships[i]].Point.X 
             }
         }
@@ -173,13 +209,20 @@ func AddAlienFormation(ecs *ecs.ECS, x, y float64, view *utility.View, playerPos
         r := rand.Intn(len(ships))
 
         acts := component.Actions.Get(ships[r])
+
+        if acts.TriggerMap[component.Charge_actionid] ||
+           acts.TriggerMap[component.Follow_actionid] ||
+           acts.TriggerMap[component.ReturnShip_actionid] {
+            cdm[component.SendShip_actionid] = component.Cooldown{Cur:100, Max:600} 
+            return
+        }
+
         acts.TriggerMap[component.Charge_actionid] = true
         acts.CooldownMap[component.Shoot_actionid] = component.Cooldown{
             Cur:AlienShootDelay, 
             Max:AlienShootDelay,
         }
  
-        //tm[component.SendShip_actionid] = false
         cdm[component.SendShip_actionid] = component.Cooldown{Cur:600, Max:600} 
     }
 

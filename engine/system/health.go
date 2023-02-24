@@ -22,7 +22,7 @@ var Health = &health{
 func (this *health) Update(ecs *ecs.ECS) {
 	this.query.EachEntity(ecs.World, func(entry *donburi.Entry) {
 		hval := component.Health.Get(entry).Value
-        if hval <= 0 {
+        if *hval <= 0 {
             if entry.HasComponent(component.Actions) {
                 actions := component.Actions.Get(entry).TriggerMap
                 actions[component.Destroy_actionid] = true

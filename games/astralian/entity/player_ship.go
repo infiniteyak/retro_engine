@@ -46,7 +46,8 @@ func AddPlayerShip( ecs *ecs.ECS,
     donburi.SetValue(entry, component.Factions, factions)
 
     // Health
-    donburi.SetValue(entry, component.Health, component.HealthData{Value:1.0})
+    healthAmount := 1.0
+    donburi.SetValue(entry, component.Health, component.HealthData{Value:&healthAmount})
 
     // Collider
     collider := component.NewColliderData()
@@ -104,6 +105,8 @@ func AddPlayerShip( ecs *ecs.ECS,
         //ti := gobj.TransInfo
         //bulletVector := bulletVelocity.Rotate(*ti.Rotation)
         //bulletVector = vd.Velocity.Add(bulletVector) //TODO could be interesting
+
+        //TODO there's some bug where it crashes if the boomerang is out when you respawn
 
         // TODO Make the bullet spawn at the front of the ship, not the middle
         if readyToFire {

@@ -43,10 +43,10 @@ func (this *damage) Update(ecs *ecs.ECS) {
                     if target.HasComponent(component.Actions) {
                         acts := component.Actions.Get(target)
                         if !acts.TriggerMap[component.Shield_actionid] {
-                            targetHealth.Value -= *damage.Value
+                            *targetHealth.Value -= *damage.Value
                         }
                     } else {
-                        targetHealth.Value -= *damage.Value
+                        *targetHealth.Value -= *damage.Value
                     }
                     if damage.DestroyOnDamage && entry.HasComponent(component.Actions) {
                         acts := component.Actions.Get(entry)

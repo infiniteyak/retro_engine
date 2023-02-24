@@ -6,6 +6,7 @@ import (
 
 type ActionId int
 
+// TODO fix this
 // For now this needs to have all actions from all games
 // Otherwise I need a more complicated solution for these IDs
 const (
@@ -32,6 +33,7 @@ const (
     Reload_actionid
     IncreasePower_actionid
     ResetPower_actionid
+    Follow_actionid
 )
 
 type ActionsData struct {
@@ -45,6 +47,10 @@ var Actions = donburi.NewComponentType[ActionsData]()
 type Cooldown struct {
     Cur int
     Max int
+}
+
+func (this *Cooldown) Reset() {
+    this.Cur = this.Max
 }
 
 func NewActions() ActionsData {

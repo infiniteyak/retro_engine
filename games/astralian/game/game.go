@@ -18,7 +18,7 @@ import (
 
 const (
     Title string = "Astralian"
-    StartingShips int = 0//3
+    StartingShips int = 3
     StartingWave int = 0
 )
 

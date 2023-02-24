@@ -48,6 +48,19 @@ func (this *GraphicObjectData) Init() {
     }
 }
 
+func (this *GraphicObjectData) HideAllRenderables(hide bool) {
+    for i := 0; i < len(this.Renderables); i++ {
+        *this.Renderables[i].GetTransInfo().Hide = hide
+    }
+}
+
+//TODO what if the renderables don't all have play?
+func (this *GraphicObjectData) PlayAllRenderables(tag string) {
+    for i := 0; i < len(this.Renderables); i++ {
+        this.Renderables[i].Play(tag)
+    }
+}
+
 func NewGraphicObjectData() GraphicObjectData {
     this := GraphicObjectData{}
     this.Init()

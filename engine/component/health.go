@@ -5,7 +5,7 @@ import (
 )
 
 type HealthData struct {
-    Value float64
+    Value *float64
 }
 
 var Health = donburi.NewComponentType[HealthData]()
