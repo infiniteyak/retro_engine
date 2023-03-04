@@ -170,7 +170,7 @@ func (this *alienData) destroy() {
     pointVal := this.pointValue
     if this.actions.TriggerMap[component.Charge_actionid] ||
        this.actions.TriggerMap[component.Follow_actionid] {
-        pointVal *= 2 // bonus points for hitting chargers
+        pointVal += 10 // bonus points for hitting chargers
     }
     se := event.Score{Value:pointVal}
     event.ScoreEvent.Publish(this.ecs.World, se)
@@ -234,7 +234,8 @@ func AddAlien( ecs *ecs.ECS,
                audioContext *audio.Context,
                playerPos *component.PositionData,
                aType AlienType,
-               boss *donburi.Entry ) *donburi.Entity {
+               boss *donburi.Entry,
+               wave int) *donburi.Entity {
     ad := &alienData{}
     ad.ecs = ecs
 
@@ -303,7 +304,7 @@ func AddAlien( ecs *ecs.ECS,
     donburi.SetValue(ad.entry, component.Actions, ad.actions)
 
     ad.aType = aType
-    ad.pointValue = alienPointMap[ad.aType]
+    ad.pointValue = alienPointMap[ad.aType]// + (10 * (wave - 1))
 
     //TODO need to make a slice of pointers?
     ad.graphicObject = component.NewGraphicObjectData()

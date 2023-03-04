@@ -25,6 +25,7 @@ type alienFormationData struct {
     ships []*donburi.Entry
     shipSlots map[*donburi.Entry]component.PositionData
     sendCd int
+    wave int
 }
 
 func findExtremeShipX(ships []*donburi.Entry) (float64, float64) {
@@ -97,7 +98,7 @@ func (this *alienFormationData) initConvoy(x, y float64) {
                         curBoss = bosses[bossIndex]
                     }
                 }
-                ship_entry := this.ecs.World.Entry(*AddAlien(this.ecs, x + curOffsetX, y + curOffsetY, this.view.View, this.audioContext, this.playerPos, aType, curBoss))
+                ship_entry := this.ecs.World.Entry(*AddAlien(this.ecs, x + curOffsetX, y + curOffsetY, this.view.View, this.audioContext, this.playerPos, aType, curBoss, this.wave))
                 this.ships = append(this.ships, ship_entry)
                 if aType == Grey_alientype {
                     bosses = append(bosses, ship_entry)
@@ -141,6 +142,7 @@ func AddAlienFormation(ecs *ecs.ECS,
                        wave int) *donburi.Entity {
     afd := &alienFormationData{}
     afd.ecs = ecs
+    afd.wave = wave
 
     afd.playerPos = playerPos //so the AI can track the player ship
 
@@ -172,7 +174,7 @@ func AddAlienFormation(ecs *ecs.ECS,
     // Actions
     afd.actions = component.NewActions()
 
-    afd.sendCd = AlienConvoySendCd - (30 * (wave-1))
+    afd.sendCd = AlienConvoySendCd - (30 * (afd.wave-1))
     print(afd.sendCd)
     if afd.sendCd < AlienConvoySendInitCd {
         afd.sendCd = AlienConvoySendInitCd 
@@ -189,6 +191,8 @@ func AddAlienFormation(ecs *ecs.ECS,
     afd.actions.ActionMap[component.Upkeep_actionid] = func() {
         if len(afd.ships) == 0 && !cleared {
             cleared = true
+            se := event.Score{Value:400 * afd.wave}
+            event.ScoreEvent.Publish(ecs.World, se)
             event.ScreenClearEvent.Publish(ecs.World, event.ScreenClear{})
             return
         }

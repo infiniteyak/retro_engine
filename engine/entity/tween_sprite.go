@@ -15,6 +15,7 @@ func AddTweenSprite(ecs *ecs.ECS,
                     xTween, yTween *gween.Tween,
                     delay int, 
                     spriteName string, 
+                    tag string, 
                     view *utility.View) *donburi.Entity {
     entity := ecs.Create(
         layer, 
@@ -35,7 +36,8 @@ func AddTweenSprite(ecs *ecs.ECS,
     gobj := component.NewGraphicObjectData()
     nsd := component.SpriteData{}
     nsd.Load(spriteName, nil)
-    nsd.Play("Idle")
+    //nsd.Play("Idle")
+    nsd.Play(tag)
     gobj.Renderables = append(gobj.Renderables, &nsd)
     donburi.SetValue(entry, component.GraphicObject, gobj)
 

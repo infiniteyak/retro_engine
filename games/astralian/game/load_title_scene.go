@@ -3,6 +3,7 @@ package game
 import (
 	"github.com/infiniteyak/retro_engine/engine/entity"
 	"github.com/infiniteyak/retro_engine/engine/utility"
+	aEntity "github.com/infiniteyak/retro_engine/games/astralian/entity"
 	"strings"
 	"github.com/hajimehoshi/ebiten/v2"
 )
@@ -29,6 +30,14 @@ func (this *Game) LoadTitleScene() {
     entity.AddInputTrigger(
         this.ecs, 
         ebiten.KeySpace,
+        func() {
+            this.Transition(Advance_sceneEvent)
+        },
+    )
+
+    aEntity.AddDelayTrigger(
+        this.ecs, 
+        2000,
         func() {
             this.Transition(Advance_sceneEvent)
         },

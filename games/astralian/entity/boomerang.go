@@ -74,12 +74,13 @@ func AddBoomerang( ecs *ecs.ECS,
 
     tm[component.SelfDestruct_actionid] = true
     //cdm[component.SelfDestruct_actionid] = component.Cooldown{Cur:500, Max:500}
-    cdm[component.SelfDestruct_actionid] = component.Cooldown{Cur:300, Max:300}
+    cdm[component.SelfDestruct_actionid] = component.Cooldown{Cur:400, Max:400}
     am[component.SelfDestruct_actionid] = func() {
         tm[component.SelfDestruct_actionid] = false
         tm[component.DestroySilent_actionid] = true
     }
     caught := false
+    hits := 0
     am[component.DestroySilent_actionid] = func() {
         event.RemoveEntityEvent.Publish(
             ecs.World, 
@@ -90,7 +91,7 @@ func AddBoomerang( ecs *ecs.ECS,
             playerActions.TriggerMap[component.Reload_actionid] = true
             if caught {
                 playerActions.TriggerMap[component.IncreasePower_actionid] = true
-                event.ScoreEvent.Publish(ecs.World, event.Score{Value:10})
+                event.ScoreEvent.Publish(ecs.World, event.Score{Value:hits*hits})
             } else {
                 playerActions.TriggerMap[component.ResetPower_actionid] = true
             }
@@ -182,6 +183,7 @@ func AddBoomerang( ecs *ecs.ECS,
 
         hitPlayer.Rewind()
         hitPlayer.Play()
+        hits++
         power--
         if power <= 0 {
             *dd.Value = 0

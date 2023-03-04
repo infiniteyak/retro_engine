@@ -3,6 +3,7 @@ package game
 import (
 	"github.com/infiniteyak/retro_engine/engine/entity"
 	"github.com/infiniteyak/retro_engine/engine/layer"
+	aEntity "github.com/infiniteyak/retro_engine/games/astralian/entity"
 	"github.com/hajimehoshi/ebiten/v2"
     "github.com/tanema/gween"
     "github.com/tanema/gween/ease"
@@ -85,6 +86,7 @@ func (this *Game) LoadInfoScene() {
         nil,
         scoreDelay,
         "AlienD",
+        "Idle",
         this.screenView,
     )
 
@@ -101,7 +103,7 @@ func (this *Game) LoadInfoScene() {
         scoreDelay,
         this.screenView,
         "LightBlueFont",
-        "60      120 points",
+        "60      70 points",
     )
     ptsText1.YAlign = entity.Top_fontaligny
     ptsText1.XAlign = entity.Left_fontalignx
@@ -120,6 +122,7 @@ func (this *Game) LoadInfoScene() {
         nil,
         scoreDelay,
         "AlienC",
+        "Idle",
         this.screenView,
     )
 
@@ -136,7 +139,7 @@ func (this *Game) LoadInfoScene() {
         scoreDelay,
         this.screenView,
         "LightBlueFont",
-        "50      100 points",
+        "50      60 points",
     )
     ptsText2.YAlign = entity.Top_fontaligny
     ptsText2.XAlign = entity.Left_fontalignx
@@ -155,6 +158,7 @@ func (this *Game) LoadInfoScene() {
         nil,
         scoreDelay,
         "AlienB",
+        "Idle",
         this.screenView,
     )
 
@@ -171,7 +175,7 @@ func (this *Game) LoadInfoScene() {
         scoreDelay,
         this.screenView,
         "LightBlueFont",
-        "40      80  points",
+        "40      50 points",
     )
     ptsText3.YAlign = entity.Top_fontaligny
     ptsText3.XAlign = entity.Left_fontalignx
@@ -190,6 +194,7 @@ func (this *Game) LoadInfoScene() {
         nil,
         scoreDelay,
         "AlienA",
+        "Idle",
         this.screenView,
     )
 
@@ -206,16 +211,72 @@ func (this *Game) LoadInfoScene() {
         scoreDelay,
         this.screenView,
         "LightBlueFont",
-        "30      60  points",
+        "30      40 points",
     )
     ptsText4.YAlign = entity.Top_fontaligny
     ptsText4.XAlign = entity.Left_fontalignx
-    //scoreDelay += 240
+    scoreDelay += 240
+
+    enemyXTween5 := gween.New(float32(this.screenView.Area.Min.X - 20), 
+                        float32(this.screenView.Area.Max.X / 2 - enemyOffset), 
+                        2,
+                        ease.Linear)
+    entity.AddTweenSprite(
+        this.ecs,
+        layer.Foreground,
+        float64(this.screenView.Area.Min.X - 20), 
+        float64(this.screenView.Area.Min.Y + 243),
+        enemyXTween5,
+        nil,
+        scoreDelay,
+        "Boomerang",
+        "",
+        this.screenView,
+    )
+
+    ptsTextTween5 := gween.New(float32(this.screenView.Area.Max.X + 20), 
+                               float32(this.screenView.Area.Min.X + 68), 
+                               2,
+                               ease.Linear)
+    ptsText5 := entity.AddNormalTweenText(
+        this.ecs, 
+        float64(this.screenView.Area.Max.X + 20), 
+        float64(this.screenView.Area.Min.Y + 240),
+        ptsTextTween5,
+        nil,
+        scoreDelay,
+        this.screenView,
+        "LightBlueFont",
+        //"5 points per enemy",
+        "hits squared points",
+    )
+    ptsText5.YAlign = entity.Top_fontaligny
+    ptsText5.XAlign = entity.Left_fontalignx
+
+    scoreDelay += 240
+
+    ptsTextTween6 := gween.New(float32(this.screenView.Area.Max.X + 20), 
+                               float32(this.screenView.Area.Min.X + 30), 
+                               2,
+                               ease.Linear)
+    ptsText6 := entity.AddNormalTweenText(
+        this.ecs, 
+        float64(this.screenView.Area.Max.X + 20), 
+        float64(this.screenView.Area.Min.Y + 258),
+        ptsTextTween6,
+        nil,
+        scoreDelay,
+        this.screenView,
+        "LightBlueFont",
+        "Clear Bonus 400 x Wave",
+    )
+    ptsText6.YAlign = entity.Top_fontaligny
+    ptsText6.XAlign = entity.Left_fontalignx
 
     logoText := entity.AddNormalText(
         this.ecs, 
         float64(this.screenView.Area.Max.X / 2), 
-        float64(this.screenView.Area.Min.Y + 260),
+        float64(this.screenView.Area.Min.Y + 278),
         this.screenView,
         "PurpleFont",
         "www.infiniteyak.com",
@@ -226,6 +287,14 @@ func (this *Game) LoadInfoScene() {
     entity.AddInputTrigger(
         this.ecs, 
         ebiten.KeySpace,
+        func() {
+            this.Transition(Advance_sceneEvent)
+        },
+    )
+
+    aEntity.AddDelayTrigger(
+        this.ecs, 
+        3000,
         func() {
             this.Transition(Advance_sceneEvent)
         },

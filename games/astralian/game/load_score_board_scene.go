@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/infiniteyak/retro_engine/engine/entity"
 	"github.com/infiniteyak/retro_engine/engine/utility"
+	aEntity "github.com/infiniteyak/retro_engine/games/astralian/entity"
 	"sort"
     "net/http"
     "bytes"
@@ -40,7 +41,7 @@ func getScores(pInitials string, pScore int) ([]scoreEntryAPI, bool) {
         }
     }
 
-    response, err := http.Get("https://www.infiniteyak.com/api/collections/astralian_scores/records?sort=-score&perPage=10")
+    response, err := http.Get("https://www.infiniteyak.com/api/collections/astralian_scores/records?sort=-score&perPage=15")
     if err != nil {
         print(err)
         return nil, true
@@ -94,8 +95,8 @@ func (this *Game) LoadScoreBoardScene() {
         }
     }
     scoreCount := len(this.highScores)
-    if len(this.highScores) > 10 {
-        scoreCount = 10
+    if len(this.highScores) > 15 {
+        scoreCount = 15
     }
     blinked := false
     for i := 0; i < scoreCount; i++ {
@@ -125,6 +126,14 @@ func (this *Game) LoadScoreBoardScene() {
     entity.AddInputTrigger(
         this.ecs, 
         ebiten.KeySpace,
+        func() {
+            this.Transition(Advance_sceneEvent)
+        },
+    )
+
+    aEntity.AddDelayTrigger(
+        this.ecs, 
+        2000,
         func() {
             this.Transition(Advance_sceneEvent)
         },
