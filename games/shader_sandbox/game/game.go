@@ -2,25 +2,23 @@ package game
 
 import (
 	"os"
-	"github.com/infiniteyak/retro_engine/games/astralian/asset"
+	"github.com/infiniteyak/retro_engine/games/shader_sandbox/asset"
 	"github.com/infiniteyak/retro_engine/engine/system"
 
 	"github.com/infiniteyak/retro_engine/engine/scene"
     "github.com/infiniteyak/retro_engine/engine/layer"
 	"github.com/infiniteyak/retro_engine/engine/utility"
+	"github.com/infiniteyak/retro_engine/engine/shader"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/audio"
+	//"github.com/hajimehoshi/ebiten/v2/audio"
 	"github.com/yohamta/donburi"
 	"github.com/yohamta/donburi/ecs"
 	"github.com/yohamta/donburi/features/events"
-	"github.com/infiniteyak/retro_engine/engine/shader"
 )
 
 const (
-    Title string = "Astralian"
-    StartingShips int = 3
-    StartingWave int = 1
+    Title string = "Shader Sandbox"
 )
 
 type Game struct {
@@ -28,18 +26,6 @@ type Game struct {
     curScene *scene.Scene
     ecs *ecs.ECS
     states map[scene.SceneId]map[scene.SceneEventId]func() 
-    curWave int
-    curShips int
-    curScore utility.ScoreEntry
-    highScores []utility.ScoreEntry
-    audioContext *audio.Context
-    //musicPlayer *audio.Player
-}
-
-func (this *Game) ResetScore() {
-    this.curScore = utility.ScoreEntry{}
-    this.curWave = StartingWave
-    this.curShips = StartingShips
 }
 
 func NewGame(width, height float64) *Game {
@@ -50,29 +36,24 @@ func NewGame(width, height float64) *Game {
         ecs: ecs,
     }
 
-    // Will be reset in score board scene also
-    this.ResetScore()
-
-    this.audioContext = audio.NewContext(48000)
     this.InitStates()
-    this.highScores = []utility.ScoreEntry{}
-    astralian_assets.InitAssets()
+    shader_sb_assets.InitAssets()
     shader.InitShaders(width, height)
 
     this.curScene = scene.NewScene(this.ecs)
     this.Transition(Init_sceneEvent)
     
-    this.ecs.AddSystem(system.Velocity.Update)
-    this.ecs.AddSystem(system.ViewBound.Update)
-    this.ecs.AddSystem(system.PosTween.Update)
-    this.ecs.AddSystem(system.Wrap.Update)
-    this.ecs.AddSystem(system.Collisions.Update)
+    //this.ecs.AddSystem(system.Velocity.Update)
+    //this.ecs.AddSystem(system.ViewBound.Update)
+    //this.ecs.AddSystem(system.PosTween.Update)
+    //this.ecs.AddSystem(system.Wrap.Update)
+    //this.ecs.AddSystem(system.Collisions.Update)
 
-    this.ecs.AddSystem(system.AnimateGraphicObjects.Update)
+    //this.ecs.AddSystem(system.AnimateGraphicObjects.Update)
     this.ecs.AddSystem(system.Input.Update)
-    this.ecs.AddSystem(system.TextInput.Update)
-    this.ecs.AddSystem(system.Damage.Update)
-    this.ecs.AddSystem(system.Health.Update)
+    //this.ecs.AddSystem(system.TextInput.Update)
+    //this.ecs.AddSystem(system.Damage.Update)
+    //this.ecs.AddSystem(system.Health.Update)
 
     this.ecs.AddSystem(system.Action.Update)
 
@@ -104,8 +85,7 @@ func (this *Game) Draw(screen *ebiten.Image) {
 	this.ecs.DrawLayer(layer.Foreground, screen)
 	this.ecs.DrawLayer(layer.HudBackground, screen)
 	this.ecs.DrawLayer(layer.HudForeground, screen)
-    //shader.RunPassthroughShader(screen)
-    shader.RunNoShader(screen)
+    shader.RunShaders(screen)
 }
 
 func (this *Game) Exit() {

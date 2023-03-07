@@ -5,12 +5,12 @@ import (
     "github.com/infiniteyak/retro_engine/engine/layer"
     "github.com/infiniteyak/retro_engine/engine/component"
     "github.com/infiniteyak/retro_engine/engine/event"
-    "github.com/infiniteyak/retro_engine/engine/asset"
+    //"github.com/infiniteyak/retro_engine/engine/asset"
 	"github.com/yohamta/donburi"
     "github.com/yohamta/donburi/ecs"
     "github.com/yohamta/donburi/features/math"
 	"github.com/hajimehoshi/ebiten/v2/audio"
-    "log"
+    //"log"
 )
 
 func AddBullet(ecs *ecs.ECS, pX, pY, wDist float64, velocity math.Vec2, view *utility.View, audioContext *audio.Context) *donburi.Entity {
@@ -102,14 +102,19 @@ func AddBullet(ecs *ecs.ECS, pX, pY, wDist float64, velocity math.Vec2, view *ut
             view,
         )
         //hDcopy := *asset.HitD
+        /*
         hDcopy := *asset.AudioAssets["GenericHit"].DecodedAudio
         hitPlayer, err := audioContext.NewPlayer(&hDcopy)
+        */
+        /*
+        hitPlayer, err := audioContext.NewPlayer(asset.AudioAssets["GenericHit"].DecodedAudio)
         if err != nil {
             log.Fatal(err)
         }
 
         hitPlayer.Rewind()
         hitPlayer.Play()
+        */
         event.RemoveEntityEvent.Publish(
             ecs.World, 
             event.RemoveEntity{Entity:&entity},
@@ -123,14 +128,17 @@ func AddBullet(ecs *ecs.ECS, pX, pY, wDist float64, velocity math.Vec2, view *ut
     })
 
     //fDcopy := *asset.FireD
+    /*
     fDcopy := *asset.AudioAssets["SciFiProjectile"].DecodedAudio
     firePlayer, err := audioContext.NewPlayer(&fDcopy)
+    firePlayer, err := audioContext.NewPlayer(asset.AudioAssets["SciFiProjectile"].DecodedAudio)
     if err != nil {
         log.Fatal(err)
     }
 
     firePlayer.Rewind()
     firePlayer.Play()
+    */
 
     return &entity
 }

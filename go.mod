@@ -7,6 +7,7 @@ require (
 	github.com/go-gl/glfw/v3.3/glfw v0.0.0-20220806181222-55e207c401ad // indirect
 	github.com/hajimehoshi/ebiten/v2 v2.4.16 // indirect
 	github.com/hajimehoshi/file2byteslice v1.0.0 // indirect
+	github.com/hajimehoshi/go-mp3 v0.3.3 // indirect
 	github.com/hajimehoshi/oto/v2 v2.3.1 // indirect
 	github.com/jezek/xgb v1.0.1 // indirect
 	github.com/solarlune/goaseprite v0.0.0-20220706071621-7764e3f41572 // indirect

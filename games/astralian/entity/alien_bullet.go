@@ -10,7 +10,6 @@ import (
     "github.com/yohamta/donburi/ecs"
     "github.com/yohamta/donburi/features/math"
 	"github.com/hajimehoshi/ebiten/v2/audio"
-    "log"
 )
 
 const (
@@ -120,14 +119,22 @@ func AddAlienBullet( ecs *ecs.ECS,
     }
 
     abd.actions.ActionMap[component.Destroy_actionid] = func() {
+        /*
         hDcopy := *asset.AudioAssets[AlienBulletDestroySoundName].DecodedAudio
         hitPlayer, err := abd.audioContext.NewPlayer(&hDcopy)
+        */
+        //hitPlayer, err := abd.audioContext.NewPlayer(asset.AudioAssets[AlienBulletDestroySoundName].DecodedAudio)
+        asset.PlaySound(audioContext, AlienBulletDestroySoundName)
+        /*
+        hDcopy := asset.AudioAssets[AlienBulletDestroySoundName].DecodedAudio
+        hitPlayer, err := abd.audioContext.NewPlayer(hDcopy)
         if err != nil {
             log.Fatal(err)
         }
 
         hitPlayer.Rewind()
         hitPlayer.Play()
+        */
         event.RemoveEntityEvent.Publish(
             abd.ecs.World, 
             event.RemoveEntity{Entity:abd.entity},
@@ -143,14 +150,22 @@ func AddAlienBullet( ecs *ecs.ECS,
     donburi.SetValue(abd.entry, component.Damage, abd.damage)
 
     //TODO alien fire noise?
+    /*
     fDcopy := *asset.AudioAssets[AlienBulletFireSoundName].DecodedAudio
     firePlayer, err := abd.audioContext.NewPlayer(&fDcopy)
+    */
+    //firePlayer, err := abd.audioContext.NewPlayer(asset.AudioAssets[AlienBulletFireSoundName].DecodedAudio)
+    asset.PlaySound(audioContext, AlienBulletFireSoundName)
+    /*
+    fDcopy := asset.AudioAssets[AlienBulletFireSoundName].DecodedAudio
+    firePlayer, err := abd.audioContext.NewPlayer(fDcopy)
     if err != nil {
         log.Fatal(err)
     }
 
     firePlayer.Rewind()
     firePlayer.Play()
+    */
 
     return abd.entity
 }

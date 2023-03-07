@@ -11,7 +11,6 @@ import (
     "github.com/infiniteyak/retro_engine/engine/asset"
     dmath "github.com/yohamta/donburi/features/math"
 	"github.com/hajimehoshi/ebiten/v2/audio"
-    "log"
 )
 
 func AddPlayerShip( ecs *ecs.ECS, 
@@ -161,14 +160,20 @@ func AddPlayerShip( ecs *ecs.ECS,
             event.RemoveEntity{Entity:&entity},
         )
         //shipDestroyedDcopy := *asset.DestroyedD
+        /*
         shipDestroyedDcopy := *asset.AudioAssets["PlayerShipDestroyed"].DecodedAudio
         destroyedPlayer, err := audioContext.NewPlayer(&shipDestroyedDcopy)
+        */
+        asset.PlaySound(audioContext, "PlayerShipDestroyed")
+        /*
+        destroyedPlayer, err := audioContext.NewPlayer(asset.AudioAssets["PlayerShipDestroyed"].DecodedAudio)
         if err != nil {
             log.Fatal(err)
         }
 
         destroyedPlayer.Rewind()
         destroyedPlayer.Play()
+        */
 
         event.ShipDestroyedEvent.Publish(ecs.World, event.ShipDestroyed{})
 

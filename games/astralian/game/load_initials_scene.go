@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/infiniteyak/retro_engine/engine/asset"
 	"github.com/infiniteyak/retro_engine/engine/entity"
-    "log"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -14,14 +13,20 @@ func (this *Game) LoadInitialsScene() {
 
     this.GenerateStars(this.screenView)
 
+    /*
     menuDcopy := *asset.AudioAssets["MenuNoise"].DecodedAudio
     menuPlayer, err := this.audioContext.NewPlayer(&menuDcopy)
+    */
+    asset.PlaySound(this.audioContext, "MenuNoise")
+    /*
+    menuPlayer, err := this.audioContext.NewPlayer(asset.AudioAssets["MenuNoise"].DecodedAudio)
     if err != nil {
         log.Fatal(err)
     }
 
     menuPlayer.Rewind()
     menuPlayer.Play()
+    */
 
     entity.AddNormalText(
         this.ecs, 

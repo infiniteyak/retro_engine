@@ -9,6 +9,10 @@ import (
     "github.com/infiniteyak/retro_engine/engine/component"
     "github.com/infiniteyak/retro_engine/engine/utility"
     "github.com/infiniteyak/retro_engine/engine/layer"
+    "github.com/infiniteyak/retro_engine/engine/shader"
+
+    //"image/color"
+	//"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
 
 type drawGraphicObjects struct {
@@ -57,7 +61,7 @@ var DrawGraphicObjectsHudFG = &drawGraphicObjects{
 
 //TODO need to add some kind of masking to prevent drawing outside of
 // the view
-func (this *drawGraphicObjects) Draw(ecs *ecs.ECS, screen *ebiten.Image) {
+func (this *drawGraphicObjects) DrawOrig(ecs *ecs.ECS, screen *ebiten.Image) {
 	this.query.EachEntity(ecs.World, func(entry *donburi.Entry) {
 		position := component.Position.Get(entry)
 		view := component.View.Get(entry).View
@@ -78,6 +82,31 @@ func (this *drawGraphicObjects) Draw(ecs *ecs.ECS, screen *ebiten.Image) {
                 },
             }
             renderable.Draw(screen, tinfo)
+        }
+	})
+}
+
+func (this *drawGraphicObjects) Draw(ecs *ecs.ECS, screen *ebiten.Image) {
+	this.query.EachEntity(ecs.World, func(entry *donburi.Entry) {
+		position := component.Position.Get(entry)
+		view := component.View.Get(entry).View
+		gobj := component.GraphicObject.Get(entry)
+
+        if *gobj.TransInfo.Hide {
+            return
+        }
+
+        //TODO depth?
+        for _, renderable := range gobj.Renderables {
+            tinfo := &component.TransformInfo{
+                Rotation: gobj.TransInfo.Rotation,
+                Scale: gobj.TransInfo.Scale,
+                Offset: &utility.Point{
+                    X: position.Point.X + view.Offset.X + gobj.TransInfo.Offset.X, 
+                    Y: position.Point.Y + view.Offset.Y + gobj.TransInfo.Offset.Y,
+                },
+            }
+            renderable.Draw(shader.Image0, tinfo)
         }
 	})
 }

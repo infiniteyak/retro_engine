@@ -10,7 +10,6 @@ import (
     "github.com/yohamta/donburi/ecs"
     "github.com/yohamta/donburi/features/math"
 	"github.com/hajimehoshi/ebiten/v2/audio"
-    "log"
 )
 
 func AddLaser( ecs *ecs.ECS, 
@@ -81,14 +80,22 @@ func AddLaser( ecs *ecs.ECS,
 
     am[component.Destroy_actionid] = func() {
         //hDcopy := *asset.HitD
+        /*
         hDcopy := *asset.AudioAssets["GenericHit"].DecodedAudio
         hitPlayer, err := audioContext.NewPlayer(&hDcopy)
+        */
+        //hitPlayer, err := audioContext.NewPlayer(asset.AudioAssets["GenericHit"].DecodedAudio)
+        asset.PlaySound(audioContext, "GenericHit")
+        /*
+        hDcopy := asset.AudioAssets["GenericHit"].DecodedAudio
+        hitPlayer, err := audioContext.NewPlayer(hDcopy)
         if err != nil {
             log.Fatal(err)
         }
 
         hitPlayer.Rewind()
         hitPlayer.Play()
+        */
         event.RemoveEntityEvent.Publish(
             ecs.World, 
             event.RemoveEntity{Entity:&entity},
@@ -127,14 +134,22 @@ func AddLaser( ecs *ecs.ECS,
     */
     donburi.SetValue(entry, component.Damage, dd)
 
+    /*
     fDcopy := *asset.AudioAssets["SciFiProjectile"].DecodedAudio
     firePlayer, err := audioContext.NewPlayer(&fDcopy)
+    */
+    //firePlayer, err := audioContext.NewPlayer(asset.AudioAssets["SciFiProjectile"].DecodedAudio)
+    asset.PlaySound(audioContext, "SciFiProjectile")
+    /*
+    fDcopy := asset.AudioAssets["SciFiProjectile"].DecodedAudio
+    firePlayer, err := audioContext.NewPlayer(fDcopy)
     if err != nil {
         log.Fatal(err)
     }
 
     firePlayer.Rewind()
     firePlayer.Play()
+    */
 
     return &entity
 }

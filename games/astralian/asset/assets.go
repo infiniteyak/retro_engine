@@ -22,6 +22,7 @@ import (
     alien_d "github.com/infiniteyak/retro_engine/games/astralian/asset/alien_d"
     alien_bullet "github.com/infiniteyak/retro_engine/games/astralian/asset/alien_bullet"
     title_font "github.com/infiniteyak/retro_engine/games/astralian/asset/title_font"
+    bg_music "github.com/infiniteyak/retro_engine/games/astralian/asset/bg_music"
 )
 
 func InitAssets() {
@@ -31,12 +32,14 @@ func InitAssets() {
 
 func InitAudioAssets() {
     //Shared assets
-    asset.LoadAudioAsset("SciFiProjectile", scifi_projectile.Wav)
-    asset.LoadAudioAsset("GenericHit", generic_hit.Wav)
-    asset.LoadAudioAsset("MenuNoise", menu_noise.Wav)
-    asset.LoadAudioAsset("PlayerShipDestroyed", player_ship_destroyed.Wav)
-    asset.LoadAudioAsset("Thruster", thruster.Wav)
-    asset.LoadAudioAsset("Wave", wave.Wav)
+    asset.LoadWavAudioAsset("SciFiProjectile", scifi_projectile.Wav)
+    asset.LoadWavAudioAsset("GenericHit", generic_hit.Wav)
+    asset.LoadWavAudioAsset("MenuNoise", menu_noise.Wav)
+    asset.LoadWavAudioAsset("PlayerShipDestroyed", player_ship_destroyed.Wav)
+    asset.LoadWavAudioAsset("Thruster", thruster.Wav)
+    asset.LoadWavAudioAsset("Wave", wave.Wav)
+
+    asset.LoadMp3AudioAsset("Music", bg_music.Mp3)
 }
 
 func InitSpriteAssets() {

@@ -10,7 +10,6 @@ import (
 	"github.com/infiniteyak/retro_engine/engine/component"
 	"strings"
 	"github.com/yohamta/donburi"
-    "log"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -182,12 +181,18 @@ func (this *Game) LoadPlayingScene() {
         this.curWave,
     )
 
+    /*
     waveDcopy := *asset.AudioAssets["Wave"].DecodedAudio
     wavePlayer, err := this.audioContext.NewPlayer(&waveDcopy)
+    */
+    asset.PlaySound(this.audioContext, "Wave")
+    /*
+    wavePlayer, err := this.audioContext.NewPlayer(asset.AudioAssets["Wave"].DecodedAudio)
     if err != nil {
         log.Fatal(err)
     }
 
     wavePlayer.Rewind()
     wavePlayer.Play()
+    */
 }
