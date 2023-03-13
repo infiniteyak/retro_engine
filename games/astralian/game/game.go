@@ -10,7 +10,6 @@ import (
 	"github.com/infiniteyak/retro_engine/engine/utility"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/audio"
 	"github.com/yohamta/donburi"
 	"github.com/yohamta/donburi/ecs"
 	"github.com/yohamta/donburi/features/events"
@@ -32,8 +31,6 @@ type Game struct {
     curShips int
     curScore utility.ScoreEntry
     highScores []utility.ScoreEntry
-    audioContext *audio.Context
-    //musicPlayer *audio.Player
 }
 
 func (this *Game) ResetScore() {
@@ -53,10 +50,11 @@ func NewGame(width, height float64) *Game {
     // Will be reset in score board scene also
     this.ResetScore()
 
-    this.audioContext = audio.NewContext(48000)
     this.InitStates()
     this.highScores = []utility.ScoreEntry{}
+
     astralian_assets.InitAssets()
+
     shader.InitShaders(width, height)
 
     this.curScene = scene.NewScene(this.ecs)

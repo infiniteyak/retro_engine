@@ -17,6 +17,7 @@ func (this *Game) LoadPlayingScene() {
     println("LoadPlayingScene")
     this.curScene.SetId(Playing_sceneId)
 
+    asset.PlayMusic("Music")
     // HUD
     hudView := utility.NewView(0.0, 0.0, this.screenView.Area.Max.X, asset.FontHeight)
 
@@ -116,7 +117,6 @@ func (this *Game) LoadPlayingScene() {
                 float64(gameView.Area.Max.X / 2), 
                 float64(gameView.Area.Max.Y - 10), 
                 gameView,
-                this.audioContext,
             )
             *playerPos = *component.Position.Get(this.ecs.World.Entry(*psEntity))
         }
@@ -167,7 +167,6 @@ func (this *Game) LoadPlayingScene() {
         float64(gameView.Area.Max.X / 2), 
         float64(gameView.Area.Max.Y - 10), 
         gameView,
-        this.audioContext,
     )
     playerPos = component.Position.Get(this.ecs.World.Entry(*psEntity))
 
@@ -177,22 +176,8 @@ func (this *Game) LoadPlayingScene() {
         float64(gameView.Area.Min.Y + 40), 
         gameView,
         playerPos,
-        this.audioContext,
         this.curWave,
     )
 
-    /*
-    waveDcopy := *asset.AudioAssets["Wave"].DecodedAudio
-    wavePlayer, err := this.audioContext.NewPlayer(&waveDcopy)
-    */
-    asset.PlaySound(this.audioContext, "Wave")
-    /*
-    wavePlayer, err := this.audioContext.NewPlayer(asset.AudioAssets["Wave"].DecodedAudio)
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    wavePlayer.Rewind()
-    wavePlayer.Play()
-    */
+    asset.PlaySound("Wave")
 }

@@ -11,7 +11,6 @@ import (
     "math/rand"
     gMath "math"
     "strconv"
-	"github.com/hajimehoshi/ebiten/v2/audio"
 )
 
 var frameStart int //used for syncing up animations
@@ -67,7 +66,6 @@ type alienData struct {
     ecs *ecs.ECS
     entry *donburi.Entry
     entity *donburi.Entity
-    audioContext *audio.Context
 
     factions component.FactionsData
     damage component.DamageData
@@ -224,14 +222,12 @@ func (this *alienData) shoot() {
         this.position.Point.X, 
         this.position.Point.Y + 4, 
         bulletVelocity, 
-        this.view.View, 
-        this.audioContext)
+        this.view.View)
 }
 
 func AddAlien( ecs *ecs.ECS,
                x, y float64,
                view *utility.View, 
-               audioContext *audio.Context,
                playerPos *component.PositionData,
                aType AlienType,
                boss *donburi.Entry,
@@ -256,8 +252,6 @@ func AddAlien( ecs *ecs.ECS,
     event.RegisterEntityEvent.Publish(ecs.World, event.RegisterEntity{Entity:ad.entity})
 
     ad.entry = ecs.World.Entry(*ad.entity)
-
-    ad.audioContext = audioContext
 
     // Factions
     factions := []component.FactionId{component.Enemy_factionid}

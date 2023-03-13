@@ -13,20 +13,9 @@ func (this *Game) LoadInitialsScene() {
 
     this.GenerateStars(this.screenView)
 
-    /*
-    menuDcopy := *asset.AudioAssets["MenuNoise"].DecodedAudio
-    menuPlayer, err := this.audioContext.NewPlayer(&menuDcopy)
-    */
-    asset.PlaySound(this.audioContext, "MenuNoise")
-    /*
-    menuPlayer, err := this.audioContext.NewPlayer(asset.AudioAssets["MenuNoise"].DecodedAudio)
-    if err != nil {
-        log.Fatal(err)
-    }
+    asset.StopMusic()
 
-    menuPlayer.Rewind()
-    menuPlayer.Play()
-    */
+    asset.PlaySound("MenuNoise")
 
     entity.AddNormalText(
         this.ecs, 

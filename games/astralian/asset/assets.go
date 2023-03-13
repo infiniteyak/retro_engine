@@ -32,6 +32,7 @@ func InitAssets() {
 
 func InitAudioAssets() {
     //Shared assets
+    asset.InitAudioContext()
     asset.LoadWavAudioAsset("SciFiProjectile", scifi_projectile.Wav)
     asset.LoadWavAudioAsset("GenericHit", generic_hit.Wav)
     asset.LoadWavAudioAsset("MenuNoise", menu_noise.Wav)

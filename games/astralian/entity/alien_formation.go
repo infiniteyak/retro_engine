@@ -8,14 +8,12 @@ import (
 	"github.com/yohamta/donburi"
     "github.com/yohamta/donburi/ecs"
     "math/rand"
-	"github.com/hajimehoshi/ebiten/v2/audio"
 )
 
 type alienFormationData struct {
     ecs *ecs.ECS
     entry *donburi.Entry
     entity *donburi.Entity
-    audioContext *audio.Context
 
     actions component.ActionsData
     position component.PositionData
@@ -98,7 +96,7 @@ func (this *alienFormationData) initConvoy(x, y float64) {
                         curBoss = bosses[bossIndex]
                     }
                 }
-                ship_entry := this.ecs.World.Entry(*AddAlien(this.ecs, x + curOffsetX, y + curOffsetY, this.view.View, this.audioContext, this.playerPos, aType, curBoss, this.wave))
+                ship_entry := this.ecs.World.Entry(*AddAlien(this.ecs, x + curOffsetX, y + curOffsetY, this.view.View, this.playerPos, aType, curBoss, this.wave))
                 this.ships = append(this.ships, ship_entry)
                 if aType == Grey_alientype {
                     bosses = append(bosses, ship_entry)
@@ -138,7 +136,6 @@ func AddAlienFormation(ecs *ecs.ECS,
                        x, y float64, 
                        view *utility.View, 
                        playerPos *component.PositionData, 
-                       audioContext *audio.Context,
                        wave int) *donburi.Entity {
     afd := &alienFormationData{}
     afd.ecs = ecs
@@ -157,8 +154,6 @@ func AddAlienFormation(ecs *ecs.ECS,
     event.RegisterEntityEvent.Publish(ecs.World, event.RegisterEntity{Entity:afd.entity})
 
     afd.entry = ecs.World.Entry(*afd.entity)
-
-    afd.audioContext = audioContext
 
     // Position
     afd.position = component.NewPositionData(x, y)

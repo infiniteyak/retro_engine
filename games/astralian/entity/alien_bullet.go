@@ -9,7 +9,6 @@ import (
 	"github.com/yohamta/donburi"
     "github.com/yohamta/donburi/ecs"
     "github.com/yohamta/donburi/features/math"
-	"github.com/hajimehoshi/ebiten/v2/audio"
 )
 
 const (
@@ -27,7 +26,6 @@ type alienBulletData struct {
     ecs *ecs.ECS
     entry *donburi.Entry
     entity *donburi.Entity
-    audioContext *audio.Context
 
     factions component.FactionsData
     damage component.DamageData
@@ -43,8 +41,7 @@ type alienBulletData struct {
 func AddAlienBullet( ecs *ecs.ECS, 
                    pX, pY float64, 
                    velocity math.Vec2, 
-                   view *utility.View, 
-                   audioContext *audio.Context) *donburi.Entity {
+                   view *utility.View) *donburi.Entity {
     abd := &alienBulletData{}
     abd.ecs = ecs
 
@@ -64,8 +61,6 @@ func AddAlienBullet( ecs *ecs.ECS,
     event.RegisterEntityEvent.Publish(ecs.World, event.RegisterEntity{Entity:abd.entity})
 
     abd.entry = ecs.World.Entry(*abd.entity)
-
-    abd.audioContext = audioContext
 
     // Factions
     factions := []component.FactionId{component.Enemy_factionid}
@@ -119,22 +114,7 @@ func AddAlienBullet( ecs *ecs.ECS,
     }
 
     abd.actions.ActionMap[component.Destroy_actionid] = func() {
-        /*
-        hDcopy := *asset.AudioAssets[AlienBulletDestroySoundName].DecodedAudio
-        hitPlayer, err := abd.audioContext.NewPlayer(&hDcopy)
-        */
-        //hitPlayer, err := abd.audioContext.NewPlayer(asset.AudioAssets[AlienBulletDestroySoundName].DecodedAudio)
-        asset.PlaySound(audioContext, AlienBulletDestroySoundName)
-        /*
-        hDcopy := asset.AudioAssets[AlienBulletDestroySoundName].DecodedAudio
-        hitPlayer, err := abd.audioContext.NewPlayer(hDcopy)
-        if err != nil {
-            log.Fatal(err)
-        }
-
-        hitPlayer.Rewind()
-        hitPlayer.Play()
-        */
+        asset.PlaySound(AlienBulletDestroySoundName)
         event.RemoveEntityEvent.Publish(
             abd.ecs.World, 
             event.RemoveEntity{Entity:abd.entity},
@@ -149,23 +129,7 @@ func AddAlienBullet( ecs *ecs.ECS,
     *abd.damage.DestroyOnDamage = true
     donburi.SetValue(abd.entry, component.Damage, abd.damage)
 
-    //TODO alien fire noise?
-    /*
-    fDcopy := *asset.AudioAssets[AlienBulletFireSoundName].DecodedAudio
-    firePlayer, err := abd.audioContext.NewPlayer(&fDcopy)
-    */
-    //firePlayer, err := abd.audioContext.NewPlayer(asset.AudioAssets[AlienBulletFireSoundName].DecodedAudio)
-    asset.PlaySound(audioContext, AlienBulletFireSoundName)
-    /*
-    fDcopy := asset.AudioAssets[AlienBulletFireSoundName].DecodedAudio
-    firePlayer, err := abd.audioContext.NewPlayer(fDcopy)
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    firePlayer.Rewind()
-    firePlayer.Play()
-    */
+    asset.PlaySound(AlienBulletFireSoundName)
 
     return abd.entity
 }

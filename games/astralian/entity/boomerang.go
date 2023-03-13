@@ -9,7 +9,6 @@ import (
 	"github.com/yohamta/donburi"
     "github.com/yohamta/donburi/ecs"
     "github.com/yohamta/donburi/features/math"
-	"github.com/hajimehoshi/ebiten/v2/audio"
     gMath "math"
 )
 
@@ -17,7 +16,6 @@ func AddBoomerang( ecs *ecs.ECS,
                    pX, pY float64, 
                    velocity math.Vec2, 
                    view *utility.View, 
-                   audioContext *audio.Context, 
                    power int, 
                    parent *donburi.Entity) *donburi.Entity {
     entity := ecs.Create(
@@ -99,23 +97,7 @@ func AddBoomerang( ecs *ecs.ECS,
     }
 
     am[component.Destroy_actionid] = func() {
-        //hDcopy := *asset.HitD
-        /*
-        hDcopy := *asset.AudioAssets["GenericHit"].DecodedAudio
-        hitPlayer, err := audioContext.NewPlayer(&hDcopy)
-        */
-        //hitPlayer, err := audioContext.NewPlayer(asset.AudioAssets["GenericHit"].DecodedAudio)
-        asset.PlaySound(audioContext, "GenericHit")
-        /*
-        hDcopy := asset.AudioAssets["GenericHit"].DecodedAudio
-        hitPlayer, err := audioContext.NewPlayer(hDcopy)
-        if err != nil {
-            log.Fatal(err)
-        }
-
-        hitPlayer.Rewind()
-        hitPlayer.Play()
-        */
+        asset.PlaySound("GenericHit")
         event.RemoveEntityEvent.Publish(
             ecs.World, 
             event.RemoveEntity{Entity:&entity},
@@ -182,22 +164,8 @@ func AddBoomerang( ecs *ecs.ECS,
         vd.Velocity.X = 0
         vd.Velocity.Y = 0
 
-        /*
-        hDcopy := *asset.AudioAssets["GenericHit"].DecodedAudio
-        hitPlayer, err := audioContext.NewPlayer(&hDcopy)
-        */
-        asset.PlaySound(audioContext, "GenericHit")
-        /*
-        hDcopy := asset.AudioAssets["GenericHit"].DecodedAudio
-        //hitPlayer, err := audioContext.NewPlayer(asset.AudioAssets["GenericHit"].DecodedAudio)
-        hitPlayer, err := audioContext.NewPlayer(hDcopy)
-        if err != nil {
-            log.Fatal(err)
-        }
+        asset.PlaySound("GenericHit")
 
-        hitPlayer.Rewind()
-        hitPlayer.Play()
-        */
         hits++
         power--
         if power <= 0 {
@@ -206,22 +174,7 @@ func AddBoomerang( ecs *ecs.ECS,
     }
     donburi.SetValue(entry, component.Damage, dd)
 
-    /*
-    fDcopy := *asset.AudioAssets["SciFiProjectile"].DecodedAudio
-    firePlayer, err := audioContext.NewPlayer(&fDcopy)
-    */
-    asset.PlaySound(audioContext, "SciFiProjectile")
-    /*
-    fDcopy := asset.AudioAssets["SciFiProjectile"].DecodedAudio
-    //firePlayer, err := audioContext.NewPlayer(asset.AudioAssets["SciFiProjectile"].DecodedAudio)
-    firePlayer, err := audioContext.NewPlayer(fDcopy)
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    firePlayer.Rewind()
-    firePlayer.Play()
-    */
+    asset.PlaySound("SciFiProjectile")
 
     return &entity
 }

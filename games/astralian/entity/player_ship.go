@@ -10,13 +10,11 @@ import (
     "github.com/infiniteyak/retro_engine/engine/event"
     "github.com/infiniteyak/retro_engine/engine/asset"
     dmath "github.com/yohamta/donburi/features/math"
-	"github.com/hajimehoshi/ebiten/v2/audio"
 )
 
 func AddPlayerShip( ecs *ecs.ECS, 
                     x, y float64, 
-                    view *utility.View, 
-                    audioContext *audio.Context) *donburi.Entity {
+                    view *utility.View) *donburi.Entity {
     entity := ecs.Create(
         layer.Foreground, 
         component.Position, 
@@ -103,7 +101,7 @@ func AddPlayerShip( ecs *ecs.ECS,
         cdm[component.Shoot_actionid] = cooldown
 
         if readyToFire {
-            AddBoomerang(ecs, pd.Point.X, pd.Point.Y, bulletVelocity, view, audioContext, power, &entity)
+            AddBoomerang(ecs, pd.Point.X, pd.Point.Y, bulletVelocity, view, power, &entity)
             readyToFire = false
             shipSd.Play("Idle")
         }
@@ -122,8 +120,8 @@ func AddPlayerShip( ecs *ecs.ECS,
         cooldown := component.Cooldown{Cur:max, Max:max}
         cdm[component.ShootSecondary_actionid] = cooldown
 
-        AddLaser(ecs, pd.Point.X-3, pd.Point.Y-4, secondaryBulletVelocity, view, audioContext)
-        AddLaser(ecs, pd.Point.X+3, pd.Point.Y-4, secondaryBulletVelocity, view, audioContext)
+        AddLaser(ecs, pd.Point.X-3, pd.Point.Y-4, secondaryBulletVelocity, view)
+        AddLaser(ecs, pd.Point.X+3, pd.Point.Y-4, secondaryBulletVelocity, view)
     }
 
     am[component.IncreasePower_actionid] = func() {
@@ -159,21 +157,7 @@ func AddPlayerShip( ecs *ecs.ECS,
             ecs.World, 
             event.RemoveEntity{Entity:&entity},
         )
-        //shipDestroyedDcopy := *asset.DestroyedD
-        /*
-        shipDestroyedDcopy := *asset.AudioAssets["PlayerShipDestroyed"].DecodedAudio
-        destroyedPlayer, err := audioContext.NewPlayer(&shipDestroyedDcopy)
-        */
-        asset.PlaySound(audioContext, "PlayerShipDestroyed")
-        /*
-        destroyedPlayer, err := audioContext.NewPlayer(asset.AudioAssets["PlayerShipDestroyed"].DecodedAudio)
-        if err != nil {
-            log.Fatal(err)
-        }
-
-        destroyedPlayer.Rewind()
-        destroyedPlayer.Play()
-        */
+        asset.PlaySound("PlayerShipDestroyed")
 
         event.ShipDestroyedEvent.Publish(ecs.World, event.ShipDestroyed{})
 

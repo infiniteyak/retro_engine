@@ -48,6 +48,10 @@ var AudioAssets = map[string]AudioAsset{}
 
 var PolyImage *ebiten.Image
 
+var AudioContext *audio.Context
+var MusicPlayer *audio.Player
+var CurrentMusic string
+
 func LoadSpriteAsset(name string, json, png []byte) {
     img, _, err := image.Decode(bytes.NewReader(png)) 
     if err != nil {
@@ -66,6 +70,10 @@ func InitPolyAssets() {
     PolyImage.Fill(color.White)
 }
 
+func InitAudioContext() {
+    AudioContext = audio.NewContext(48000)
+}
+
 func LoadWavAudioAsset(name string, rawAudio []byte) {
     AudioAssets[name] = AudioAsset{
         RawAudio: rawAudio,
@@ -80,7 +88,7 @@ func LoadMp3AudioAsset(name string, rawAudio []byte) {
     }
 }
 
-func PlaySound(audioContext *audio.Context, name string) {
+func PlaySound(name string) {
     var err error
     var s audioStream
     switch AudioAssets[name].AudioType {
@@ -92,10 +100,47 @@ func PlaySound(audioContext *audio.Context, name string) {
     if err != nil {
         log.Fatal(err)
     }
-    player, err := audioContext.NewPlayer(s)
+    player, err := AudioContext.NewPlayer(s)
     if err != nil {
         log.Fatal(err)
     }
     player.Rewind()
     player.Play()
+}
+
+func PlayMusic(name string) {
+    if MusicPlayer != nil && MusicPlayer.IsPlaying() && name == CurrentMusic {
+        return
+    }
+
+    println("playing music")
+
+    var err error
+    var s audioStream
+    switch AudioAssets[name].AudioType {
+    case Mp3_audiotype:
+        s, err = mp3.DecodeWithoutResampling(bytes.NewReader(AudioAssets[name].RawAudio))
+    case Wav_audiotype:
+        s, err = wav.DecodeWithoutResampling(bytes.NewReader(AudioAssets[name].RawAudio))
+    }
+    if err != nil {
+        log.Fatal(err)
+    }
+    infLoop := audio.NewInfiniteLoop(s, s.Length())
+    MusicPlayer, err = AudioContext.NewPlayer(infLoop)
+    if err != nil {
+        log.Fatal(err)
+    }
+    MusicPlayer.Rewind()
+    MusicPlayer.Play()
+    CurrentMusic = name
+}
+
+func StopMusic() {
+    if MusicPlayer == nil {
+        return
+    }
+    println("stopping music")
+    MusicPlayer.Close()
+    CurrentMusic = ""
 }
