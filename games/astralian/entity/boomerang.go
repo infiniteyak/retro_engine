@@ -65,20 +65,17 @@ func AddBoomerang( ecs *ecs.ECS,
     donburi.SetValue(entry, component.Velocity, vd)
 
     // Actions
-    tm := make(map[component.ActionId]bool)
-    cdm := make(map[component.ActionId]component.Cooldown)
-    am := make(map[component.ActionId]func())
+    ad := component.NewActions()
 
-    tm[component.SelfDestruct_actionid] = true
-    //cdm[component.SelfDestruct_actionid] = component.Cooldown{Cur:500, Max:500}
-    cdm[component.SelfDestruct_actionid] = component.Cooldown{Cur:400, Max:400}
-    am[component.SelfDestruct_actionid] = func() {
-        tm[component.SelfDestruct_actionid] = false
-        tm[component.DestroySilent_actionid] = true
-    }
+    ad.AddCooldownAction(component.SelfDestruct_actionid, 400, func() {
+        ad.TriggerMap[component.SelfDestruct_actionid] = false
+        ad.TriggerMap[component.DestroySilent_actionid] = true
+    })
+    ad.TriggerMap[component.SelfDestruct_actionid] = true
+
     caught := false
     hits := 0
-    am[component.DestroySilent_actionid] = func() {
+    ad.AddNormalAction(component.DestroySilent_actionid, func() {
         event.RemoveEntityEvent.Publish(
             ecs.World, 
             event.RemoveEntity{Entity:&entity},
@@ -94,21 +91,21 @@ func AddBoomerang( ecs *ecs.ECS,
             }
         }
         caught = false
-    }
+    })
 
-    am[component.Destroy_actionid] = func() {
+    ad.AddNormalAction(component.Destroy_actionid, func() {
         asset.PlaySound("GenericHit")
         event.RemoveEntityEvent.Publish(
             ecs.World, 
             event.RemoveEntity{Entity:&entity},
         )
-    }
+    })
 
     playerPos := component.Position.Get(playerShipEntry)
     //TODO might be cool to have a random offset in x for sourcePos
     sourcePos := component.NewPositionData(playerPos.Point.X, playerPos.Point.Y)
     curAngle := gMath.Pi
-    am[component.ReturnProjectile_actionid] = func() {
+    ad.AddNormalAction(component.ReturnProjectile_actionid, func() {
         aimOffsetY := 0.0 
 
         angleRad := 0.0
@@ -142,25 +139,21 @@ func AddBoomerang( ecs *ecs.ECS,
             playerCollider := component.Collider.Get(playerShipEntry)
             for _, cEntry := range playerCollider.Collisions {
                 if cEntry.Entity() == entity {
-                    tm[component.DestroySilent_actionid] = true
+                    ad.TriggerMap[component.DestroySilent_actionid] = true
                     caught = true
                 }
             }
         }
-    }
-
-    donburi.SetValue(entry, component.Actions, component.ActionsData{
-        TriggerMap: tm,
-        CooldownMap: cdm,
-        ActionMap: am,
     })
+
+    donburi.SetValue(entry, component.Actions, ad)
 
     // Damage
     dd := component.NewDamageData()
     *dd.Value = 1.0
     *dd.DestroyOnDamage = false
     dd.OnDamage = func() {
-        tm[component.ReturnProjectile_actionid] = true
+        ad.TriggerMap[component.ReturnProjectile_actionid] = true
         vd.Velocity.X = 0
         vd.Velocity.Y = 0
 

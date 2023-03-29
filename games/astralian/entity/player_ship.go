@@ -76,83 +76,75 @@ func AddPlayerShip( ecs *ecs.ECS,
     donburi.SetValue(entry, component.GraphicObject, gobj)
 
     // Inputs
-    im := make(map[component.ActionId]ebiten.Key)
-    im[component.MoveLeft_actionid] = ebiten.KeyLeft
-    im[component.MoveRight_actionid] = ebiten.KeyRight
-    im[component.Shoot_actionid] = ebiten.KeySpace
-    im[component.ShootSecondary_actionid] = ebiten.KeyControl
-    donburi.SetValue(entry, component.Inputs, component.InputData{Mapping: im})
+    inputs := component.NewInput()
+    inputs.AddContinuousInput(component.MoveLeft_actionid, ebiten.KeyLeft)
+    inputs.AddContinuousInput(component.MoveRight_actionid, ebiten.KeyRight)
+    inputs.AddContinuousInput(component.Shoot_actionid, ebiten.KeySpace)
+    inputs.AddContinuousInput(component.ShootSecondary_actionid, ebiten.KeyControl)
+    donburi.SetValue(entry, component.Inputs, inputs)
 
     // Actions
-    tm := make(map[component.ActionId]bool)
-    tm[component.Shield_actionid] = true //start out invulnerable
-    cdm := make(map[component.ActionId]component.Cooldown)
-    cdm[component.Shoot_actionid] = component.Cooldown{Cur:50, Max:50}
-    cdm[component.Shield_actionid] = component.Cooldown{Cur:300, Max:300}
-    am := make(map[component.ActionId]func())
+    ad := component.NewActions()
 
     // Shoot
     bulletVelocity := dmath.Vec2{X:0, Y:-2.0}
     readyToFire := true
     power := 1
-    am[component.Shoot_actionid] = func() {
-        max := cdm[component.Shoot_actionid].Max
-        cooldown := component.Cooldown{Cur:max, Max:max}
-        cdm[component.Shoot_actionid] = cooldown
+    ad.AddCooldownAction(component.Shoot_actionid, 50, func(){
+        ad.ResetCooldown(component.Shoot_actionid)
 
         if readyToFire {
             AddBoomerang(ecs, pd.Point.X, pd.Point.Y, bulletVelocity, view, power, &entity)
             readyToFire = false
             shipSd.Play("Idle")
         }
-    }
+    })
 
-    am[component.Reload_actionid] = func() {
-        tm[component.Reload_actionid] = false
+    ad.AddNormalAction(component.Reload_actionid, func(){
+        ad.TriggerMap[component.Reload_actionid] = false
         readyToFire = true
         shipSd.Play("Ready")
-    }
+    })
 
-    cdm[component.ShootSecondary_actionid] = component.Cooldown{Cur:50, Max:75}
     secondaryBulletVelocity := dmath.Vec2{X:0, Y:-2.0}
-    am[component.ShootSecondary_actionid] = func() {
-        max := cdm[component.ShootSecondary_actionid].Max
-        cooldown := component.Cooldown{Cur:max, Max:max}
-        cdm[component.ShootSecondary_actionid] = cooldown
+    ad.AddCooldownAction(component.ShootSecondary_actionid, 75, func(){
+        ad.ResetCooldown(component.ShootSecondary_actionid)
 
         AddLaser(ecs, pd.Point.X-3, pd.Point.Y-4, secondaryBulletVelocity, view)
         AddLaser(ecs, pd.Point.X+3, pd.Point.Y-4, secondaryBulletVelocity, view)
-    }
+    })
+    ad.SetCooldown(component.ShootSecondary_actionid, 50)
 
-    am[component.IncreasePower_actionid] = func() {
-        tm[component.IncreasePower_actionid] = false
+    ad.AddNormalAction(component.IncreasePower_actionid, func(){
+        ad.TriggerMap[component.IncreasePower_actionid] = false
         power++
-    }
+    })
 
-    am[component.ResetPower_actionid] = func() {
-        tm[component.ResetPower_actionid] = false
+    ad.AddNormalAction(component.ResetPower_actionid, func(){
+        ad.TriggerMap[component.ResetPower_actionid] = false
         if power > 1 {
             power -= 1
         }
-    }
+    })
 
     // Shield - actually turns off shield
-    am[component.Shield_actionid] = func() {
-        tm[component.Shield_actionid] = false
-    }
+    ad.AddCooldownAction(component.Shield_actionid, 300, func(){
+        ad.TriggerMap[component.Shield_actionid] = false
+    })
+    ad.TriggerMap[component.Shield_actionid] = true //start out invulnerable
 
     // Move Left
     moveSpeed := 1.0
-    am[component.MoveLeft_actionid] = func() {
+    ad.AddNormalAction(component.MoveLeft_actionid, func(){
         vd.Velocity.X = -1.0 * moveSpeed
-    }
+    })
 
     // Move Right
-    am[component.MoveRight_actionid] = func() {
+    ad.AddNormalAction(component.MoveRight_actionid, func(){
         vd.Velocity.X = moveSpeed
-    }
+    })
 
-    am[component.Destroy_actionid] = func() {
+    ad.AddNormalAction(component.Destroy_actionid, func(){
         event.RemoveEntityEvent.Publish(
             ecs.World, 
             event.RemoveEntity{Entity:&entity},
@@ -162,12 +154,12 @@ func AddPlayerShip( ecs *ecs.ECS,
         event.ShipDestroyedEvent.Publish(ecs.World, event.ShipDestroyed{})
 
         AddExplosion(ecs, pd.Point.X, pd.Point.Y, "AstralianShip", view)
-    }
+    })
 
     blinkCounter := 0
-    am[component.Upkeep_actionid] = func() {
+    ad.AddUpkeepAction(func(){
         // do a blinking effect if we are shielded
-        if tm[component.Shield_actionid] {
+        if ad.TriggerMap[component.Shield_actionid] {
             blinkCounter++
             if (blinkCounter / 10) % 2 == 0 {
                 *shipSd.RenderableData.GetTransInfo().Hide = true
@@ -178,16 +170,12 @@ func AddPlayerShip( ecs *ecs.ECS,
             *shipSd.RenderableData.GetTransInfo().Hide = false
         }
         // if they're both on or both off...
-        if tm[component.MoveRight_actionid] == tm[component.MoveLeft_actionid] {
+        if ad.TriggerMap[component.MoveRight_actionid] == ad.TriggerMap[component.MoveLeft_actionid] {
             vd.Velocity.X = 0
         }
-    }
-
-    donburi.SetValue(entry, component.Actions, component.ActionsData{
-        TriggerMap: tm,
-        CooldownMap: cdm,
-        ActionMap: am,
     })
+
+    donburi.SetValue(entry, component.Actions, ad)
 
     return &entity
 }

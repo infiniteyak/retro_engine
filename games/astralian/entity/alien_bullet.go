@@ -96,31 +96,29 @@ func AddAlienBullet( ecs *ecs.ECS,
     // Actions
     abd.actions = component.NewActions()
 
-    abd.actions.TriggerMap[component.SelfDestruct_actionid] = true
-    cd := component.Cooldown{
-        Cur:AlienBulletDestroyCooldown, 
-        Max:AlienBulletDestroyCooldown,
-    }
-    abd.actions.CooldownMap[component.SelfDestruct_actionid] = cd
-    abd.actions.ActionMap[component.SelfDestruct_actionid] = func() {
+    abd.actions.AddCooldownAction(component.SelfDestruct_actionid, 
+                                  AlienBulletDestroyCooldown, 
+                                  func() {
         abd.actions.TriggerMap[component.SelfDestruct_actionid] = false
         abd.actions.TriggerMap[component.DestroySilent_actionid] = true
-    }
-    abd.actions.ActionMap[component.DestroySilent_actionid] = func() {
+    })
+    abd.actions.TriggerMap[component.SelfDestruct_actionid] = true
+
+    abd.actions.AddNormalAction( component.DestroySilent_actionid,
+                                 func() {
         event.RemoveEntityEvent.Publish(
             abd.ecs.World, 
             event.RemoveEntity{Entity:abd.entity},
         )
-    }
-
-    abd.actions.ActionMap[component.Destroy_actionid] = func() {
+    })
+    abd.actions.AddNormalAction( component.Destroy_actionid,
+                                 func() {
         asset.PlaySound(AlienBulletDestroySoundName)
         event.RemoveEntityEvent.Publish(
             abd.ecs.World, 
             event.RemoveEntity{Entity:abd.entity},
         )
-    }
-
+    })
     donburi.SetValue(abd.entry, component.Actions, abd.actions)
 
     // Damage

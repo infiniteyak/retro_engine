@@ -175,13 +175,6 @@ func AddAlienFormation(ecs *ecs.ECS,
         afd.sendCd = AlienConvoySendInitCd 
     }
 
-    afd.actions.TriggerMap[component.MoveRight_actionid] = true //Start out moving right
-    afd.actions.TriggerMap[component.SendShip_actionid] = true //Dispatch ships
-    afd.actions.CooldownMap[component.SendShip_actionid] = component.Cooldown{
-        Cur:AlienConvoySendInitCd, 
-        Max:afd.sendCd,
-    }
-
     cleared := false
     afd.actions.ActionMap[component.Upkeep_actionid] = func() {
         if len(afd.ships) == 0 && !cleared {
@@ -193,7 +186,7 @@ func AddAlienFormation(ecs *ecs.ECS,
         }
     }
 
-    afd.actions.ActionMap[component.MoveRight_actionid] = func() {
+    afd.actions.AddNormalAction(component.MoveRight_actionid, func(){
         if len(afd.ships) == 0 {
             return
         }
@@ -218,8 +211,9 @@ func AddAlienFormation(ecs *ecs.ECS,
                 pos.Point.X = afd.shipSlots[afd.ships[i]].Point.X 
             }
         }
-    }
-    afd.actions.ActionMap[component.MoveLeft_actionid] = func() {
+    })
+    afd.actions.TriggerMap[component.MoveRight_actionid] = true //Start out moving right
+    afd.actions.AddNormalAction(component.MoveLeft_actionid, func(){
         if len(afd.ships) == 0 {
             return
         }
@@ -244,8 +238,8 @@ func AddAlienFormation(ecs *ecs.ECS,
                 pos.Point.X = afd.shipSlots[afd.ships[i]].Point.X 
             }
         }
-    }
-    afd.actions.ActionMap[component.SendShip_actionid] = func() {
+    })
+    afd.actions.AddCooldownAction(component.SendShip_actionid, afd.sendCd, func(){
         if len(afd.ships) == 0 {
             return
         }
@@ -273,7 +267,9 @@ func AddAlienFormation(ecs *ecs.ECS,
             Cur: afd.sendCd, 
             Max: afd.sendCd,
         } 
-    }
+    })
+    afd.actions.TriggerMap[component.SendShip_actionid] = true //Dispatch ships
+    afd.actions.SetCooldown(component.SendShip_actionid, AlienConvoySendInitCd)
 
     donburi.SetValue(afd.entry, component.Actions, afd.actions)
 

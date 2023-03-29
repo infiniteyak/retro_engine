@@ -2,19 +2,24 @@ package entity
 
 import (
     "github.com/infiniteyak/retro_engine/engine/utility"
-    "github.com/infiniteyak/retro_engine/engine/layer"
     "github.com/infiniteyak/retro_engine/engine/component"
     "github.com/infiniteyak/retro_engine/engine/event"
 	"github.com/yohamta/donburi"
     "github.com/yohamta/donburi/ecs"
+	"github.com/hajimehoshi/ebiten/v2"
 )
 
-func AddSmallExplosion(ecs *ecs.ECS, x, y float64, view *utility.View) *donburi.Entity {
+func AddPolygonObject(ecs *ecs.ECS, 
+                    layer ecs.LayerID, 
+                    x, y float64, 
+                    verts []ebiten.Vertex,
+                    view *utility.View) *donburi.Entity {
     entity := ecs.Create(
-        layer.Foreground, 
+        layer, 
         component.Position, 
         component.GraphicObject,
         component.View,
+        component.PosTween,
     )
     event.RegisterEntityEvent.Publish(ecs.World, event.RegisterEntity{Entity:&entity})
 
@@ -26,16 +31,11 @@ func AddSmallExplosion(ecs *ecs.ECS, x, y float64, view *utility.View) *donburi.
 
     // Graphic Object
     gobj := component.NewGraphicObjectData()
-    nsd := component.SpriteData{}
-    nsd.Load("SmallExplosion", nil)
-    nsd.SetLoopCallback(func() {
-        event.RemoveEntityEvent.Publish(
-            ecs.World, 
-            event.RemoveEntity{Entity:&entity},
-        )
-    })
-    nsd.SetPlaySpeed(3)
-    gobj.Renderables = append(gobj.Renderables, &nsd)
+
+    polyData := component.PolygonData{}
+    polyData.Load(verts)
+    gobj.Renderables = append(gobj.Renderables, &polyData)
+
     donburi.SetValue(entry, component.GraphicObject, gobj)
 
     // View

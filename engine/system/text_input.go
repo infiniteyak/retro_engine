@@ -57,11 +57,11 @@ func (this *textInput) Update(ecs *ecs.ECS) {
 
 func repeatingKeyPressed(key ebiten.Key) bool {
     const (
-		delay    = 30
-		interval = 3
+		delay    = 30 //initial delay before more key presses
+		interval = 3 //how often to trigger repeated input
 	)
 	d := inpututil.KeyPressDuration(key)
-	if d == 1 {
+	if d == 1 { //The press was this tick
 		return true
 	}
 	if d >= delay && (d-delay)%interval == 0 {

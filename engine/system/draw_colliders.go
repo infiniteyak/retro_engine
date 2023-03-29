@@ -9,6 +9,7 @@ import (
     "github.com/infiniteyak/retro_engine/engine/component"
     "github.com/infiniteyak/retro_engine/engine/layer"
 	"image/color"
+    "github.com/infiniteyak/retro_engine/engine/shader"
 )
 
 type drawColliders struct {
@@ -49,7 +50,8 @@ func (this *drawColliders) Draw(ecs *ecs.ECS, screen *ebiten.Image) {
             newY += view.Offset.Y
 
             op.GeoM.Translate(newX, newY)
-            screen.DrawImage(img, op)
+            //screen.DrawImage(img, op)
+            shader.Image0.DrawImage(img, op) // TODO why is this so slow?
         }
 	})
 }

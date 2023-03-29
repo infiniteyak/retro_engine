@@ -37,11 +37,6 @@ type AudioAsset struct {
     AudioType int
 }
 
-const (
-    FontHeight = 8
-    FontWidth = 8
-)
-
 var SpriteAssets = map[string]SpriteAsset {}
 
 var AudioAssets = map[string]AudioAsset{}
@@ -51,6 +46,13 @@ var PolyImage *ebiten.Image
 var AudioContext *audio.Context
 var MusicPlayer *audio.Player
 var CurrentMusic string
+
+const (
+    DefaultMusicVolume = 0.5
+    DefaultSFXVolume = 0.5
+)
+var MusicVolume float64
+var SFXVolume float64
 
 func LoadSpriteAsset(name string, json, png []byte) {
     img, _, err := image.Decode(bytes.NewReader(png)) 
@@ -70,7 +72,9 @@ func InitPolyAssets() {
     PolyImage.Fill(color.White)
 }
 
-func InitAudioContext() {
+func InitAudioAssets() {
+    MusicVolume = DefaultMusicVolume
+    SFXVolume = DefaultSFXVolume
     AudioContext = audio.NewContext(48000)
 }
 
@@ -104,6 +108,7 @@ func PlaySound(name string) {
     if err != nil {
         log.Fatal(err)
     }
+    player.SetVolume(SFXVolume)
     player.Rewind()
     player.Play()
 }
@@ -131,6 +136,7 @@ func PlayMusic(name string) {
     if err != nil {
         log.Fatal(err)
     }
+    MusicPlayer.SetVolume(MusicVolume)
     MusicPlayer.Rewind()
     MusicPlayer.Play()
     CurrentMusic = name
@@ -143,4 +149,25 @@ func StopMusic() {
     println("stopping music")
     MusicPlayer.Close()
     CurrentMusic = ""
+}
+
+func SetMusicVolume(v float64) {
+    if MusicPlayer != nil && 0 <= v && 1 >= v {
+        MusicVolume = v
+        MusicPlayer.SetVolume(v)
+    }
+}
+
+func SetSFXVolume(v float64) {
+    if 0 <= v && 1 >= v {
+        SFXVolume = v
+    }
+}
+
+func GetMusicVolume() float64 {
+    return MusicVolume
+}
+
+func GetSFXVolume() float64 {
+    return SFXVolume
 }

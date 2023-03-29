@@ -4,6 +4,11 @@ import (
 	"image"
 )
 
+const (
+    FontHeight = 8
+    FontWidth = 8
+)
+
 //ABCDEFGHIJKLM
 //NOPQRSTUVWXYZ
 //0123456789_.^

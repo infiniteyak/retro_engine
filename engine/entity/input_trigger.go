@@ -8,7 +8,7 @@ import (
     "github.com/infiniteyak/retro_engine/engine/component"
 )
 
-func AddInputTrigger(ecs *ecs.ECS, key ebiten.Key, foo func()) *donburi.Entity {
+func AddInputTrigger(ecs *ecs.ECS, key ebiten.Key, triggerFunction func()) *donburi.Entity {
     entity := ecs.World.Create(
         component.Inputs,
         component.Actions,
@@ -18,24 +18,67 @@ func AddInputTrigger(ecs *ecs.ECS, key ebiten.Key, foo func()) *donburi.Entity {
     entry := ecs.World.Entry(entity)
 
     // Inputs
-    im := make(map[component.ActionId]ebiten.Key)
-    im[component.TriggerFunction_actionid] = key //ebiten.KeySpace //should this be configurable?
-    donburi.SetValue(entry, component.Inputs, component.InputData{Mapping: im})
+    input := component.NewInput()
+    input.AddContinuousInput(component.TriggerFunction_actionid, key)
+    donburi.SetValue(entry, component.Inputs, input)
 
     // Actions
-    tm := make(map[component.ActionId]bool)
-    cdm := make(map[component.ActionId]component.Cooldown)
-    cdm[component.TriggerFunction_actionid] = component.Cooldown{Cur:100, Max:50}
-    am := make(map[component.ActionId]func())
-    
-    // Advance to next screen
-    am[component.TriggerFunction_actionid] = foo
-
-    donburi.SetValue(entry, component.Actions, component.ActionsData{
-        TriggerMap: tm,
-        CooldownMap: cdm,
-        ActionMap: am,
+    ad := component.NewActions()
+    ad.AddCooldownAction(component.TriggerFunction_actionid, 50, func() {
+        ad.ResetCooldown(component.TriggerFunction_actionid)
+        triggerFunction()
     })
+    donburi.SetValue(entry, component.Actions, ad)
+
+    return &entity
+}
+
+func AddLimitedInputTrigger(ecs *ecs.ECS, key ebiten.Key, triggerFunction func()) *donburi.Entity {
+    entity := ecs.World.Create(
+        component.Inputs,
+        component.Actions,
+        )
+    event.RegisterEntityEvent.Publish(ecs.World, event.RegisterEntity{Entity:&entity})
+
+    entry := ecs.World.Entry(entity)
+
+    // Inputs
+    input := component.NewInput()
+    input.AddLimitedInput(component.TriggerFunction_actionid, key)
+    donburi.SetValue(entry, component.Inputs, input)
+
+    // Actions
+    ad := component.NewActions()
+    ad.AddNormalAction(component.TriggerFunction_actionid, func() {
+        ad.TriggerMap[component.TriggerFunction_actionid] = false
+        triggerFunction()
+    })
+    donburi.SetValue(entry, component.Actions, ad)
+
+    return &entity
+}
+
+func AddHybridInputTrigger(ecs *ecs.ECS, key ebiten.Key, delay int, freq int, triggerFunction func()) *donburi.Entity {
+    entity := ecs.World.Create(
+        component.Inputs,
+        component.Actions,
+        )
+    event.RegisterEntityEvent.Publish(ecs.World, event.RegisterEntity{Entity:&entity})
+
+    entry := ecs.World.Entry(entity)
+
+    // Inputs
+    input := component.NewInput()
+    input.AddHybridInput(component.TriggerFunction_actionid, key, delay, freq)
+    donburi.SetValue(entry, component.Inputs, input)
+
+    // Actions
+    ad := component.NewActions()
+    ad.AddNormalAction(component.TriggerFunction_actionid, func() {
+        ad.TriggerMap[component.TriggerFunction_actionid] = false
+        triggerFunction()
+    })
+    donburi.SetValue(entry, component.Actions, ad)
 
     return &entity
 }

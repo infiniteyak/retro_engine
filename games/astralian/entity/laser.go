@@ -59,37 +59,31 @@ func AddLaser( ecs *ecs.ECS,
     donburi.SetValue(entry, component.Velocity, vd)
 
     // Actions
-    tm := make(map[component.ActionId]bool)
-    cdm := make(map[component.ActionId]component.Cooldown)
-    am := make(map[component.ActionId]func())
+    ad := component.NewActions()
 
-    tm[component.SelfDestruct_actionid] = true
-    cdm[component.SelfDestruct_actionid] = component.Cooldown{Cur:50, Max:50}
-    am[component.SelfDestruct_actionid] = func() {
-        tm[component.SelfDestruct_actionid] = false
-        tm[component.DestroySilent_actionid] = true
-    }
-    am[component.DestroySilent_actionid] = func() {
+    ad.AddCooldownAction(component.SelfDestruct_actionid, 50, func(){
+        ad.TriggerMap[component.SelfDestruct_actionid] = false
+        ad.TriggerMap[component.DestroySilent_actionid] = true
+    })
+    ad.TriggerMap[component.SelfDestruct_actionid] = true
+
+    ad.AddNormalAction(component.DestroySilent_actionid, func(){
         event.RemoveEntityEvent.Publish(
             ecs.World, 
             event.RemoveEntity{Entity:&entity},
         )
-    }
+    })
 
-    am[component.Destroy_actionid] = func() {
+    ad.AddNormalAction(component.Destroy_actionid, func(){
         asset.PlaySound("GenericHit")
 
         event.RemoveEntityEvent.Publish(
             ecs.World, 
             event.RemoveEntity{Entity:&entity},
         )
-    }
-
-    donburi.SetValue(entry, component.Actions, component.ActionsData{
-        TriggerMap: tm,
-        CooldownMap: cdm,
-        ActionMap: am,
     })
+
+    donburi.SetValue(entry, component.Actions, ad)
 
     // Damage
     dd := component.NewDamageData()

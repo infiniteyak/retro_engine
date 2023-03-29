@@ -292,9 +292,9 @@ func AddAlien( ecs *ecs.ECS,
 
     // Action
     ad.actions = component.NewActions()
-    ad.actions.ActionMap[component.Destroy_actionid] = ad.destroy
-    ad.actions.ActionMap[component.ReturnShip_actionid] = ad.returnToConvoy
-    ad.actions.ActionMap[component.Shoot_actionid] = ad.shoot
+    ad.actions.AddNormalAction(component.Destroy_actionid, ad.destroy)
+    ad.actions.AddNormalAction(component.ReturnShip_actionid, ad.returnToConvoy)
+    ad.actions.AddNormalAction(component.Shoot_actionid, ad.shoot)
     donburi.SetValue(ad.entry, component.Actions, ad.actions)
 
     ad.aType = aType
@@ -331,7 +331,7 @@ func (this *alienData) init() {
 }
 
 func (this *alienData) initBlue() {
-    this.actions.ActionMap[component.Charge_actionid] = func() {
+    this.actions.AddNormalAction(component.Charge_actionid, func() {
         this.actions.TriggerMap[component.Shoot_actionid] = true
 
         if this.position.Point.Y < (this.playerPos.Point.Y + AlienAimOffsetY) {
@@ -345,11 +345,11 @@ func (this *alienData) initBlue() {
         if this.position.Point.Y > (this.view.View.Area.Max.Y + 30) {
             this.prepareReturnToConvoy()
         }
-    }
+    })
 }
 
 func (this *alienData) initPurple() {
-    this.actions.ActionMap[component.Charge_actionid] = func() {
+    this.actions.AddNormalAction(component.Charge_actionid, func() {
         this.actions.TriggerMap[component.Shoot_actionid] = true
 
         if this.position.Point.Y < (this.playerPos.Point.Y + AlienAimOffsetY) {
@@ -365,11 +365,11 @@ func (this *alienData) initPurple() {
         if this.position.Point.Y > (this.view.View.Area.Max.Y + 30) {
             this.prepareReturnToConvoy()
         }
-    }
+    })
 }
 
 func (this *alienData) initGreen() {
-    this.actions.ActionMap[component.Charge_actionid] = func() {
+    this.actions.AddNormalAction(component.Charge_actionid, func() {
         // Don't charge if our boss is still alive.
         if this.boss.Valid() {
             this.actions.TriggerMap[component.Charge_actionid] = false
@@ -391,7 +391,7 @@ func (this *alienData) initGreen() {
         if this.position.Point.Y > (this.view.View.Area.Max.Y + 30) {
             this.prepareReturnToConvoy()
         }
-    }
+    })
 
     bossOffsetX := 0.0
     bossOffsetY := 0.0
@@ -400,7 +400,7 @@ func (this *alienData) initGreen() {
         bossOffsetX = this.position.Point.X - bossPos.X
         bossOffsetY = this.position.Point.Y - bossPos.Y
     }
-    this.actions.ActionMap[component.Follow_actionid] = func() {
+    this.actions.AddNormalAction(component.Follow_actionid, func() {
         if !this.boss.Valid() {
             println("boss died")
             this.actions.TriggerMap[component.Charge_actionid] = true
@@ -420,9 +420,9 @@ func (this *alienData) initGreen() {
         } 
 
         this.rotateAnimation()
-    }
+    })
 
-    this.actions.ActionMap[component.Upkeep_actionid] = func() {
+    this.actions.AddUpkeepAction(func() {
         if this.boss.Valid() {
             //if the boss is charging bodyguards should follow
             acts := component.Actions.Get(this.boss)
@@ -440,11 +440,11 @@ func (this *alienData) initGreen() {
                 this.prepareReturnToConvoy()
             }
         }
-    }
+    })
 }
 
 func (this *alienData) initGrey() {
-    this.actions.ActionMap[component.Charge_actionid] = func() {
+    this.actions.AddNormalAction(component.Charge_actionid, func() {
         this.actions.TriggerMap[component.Shoot_actionid] = true
 
         if this.position.Point.Y < (this.playerPos.Point.Y + AlienAimOffsetY) {
@@ -460,5 +460,5 @@ func (this *alienData) initGrey() {
         if this.position.Point.Y > (this.view.View.Area.Max.Y + 30) {
             this.prepareReturnToConvoy()
         }
-    }
+    })
 }

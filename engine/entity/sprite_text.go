@@ -113,13 +113,11 @@ func AddSpriteText(ecs *ecs.ECS, x, y float64, view *utility.View, layer ecs.Lay
     donburi.SetValue(entry, component.PosTween, comp)
 
     // Actions
-    tm := make(map[component.ActionId]bool)
-    cdm := make(map[component.ActionId]component.Cooldown)
-    am := make(map[component.ActionId]func())
     blinkCounter := 0
     typeWriterCounter := curString.TypeWriter
     delayCounter := curString.Delay
-    am[component.Upkeep_actionid] = func() { 
+    ad := component.NewActions()
+    ad.AddUpkeepAction(func(){
         g := component.GraphicObject.Get(entry)
         if delayCounter <= 0 {
             *g.TransInfo.Hide = false
@@ -169,13 +167,9 @@ func AddSpriteText(ecs *ecs.ECS, x, y float64, view *utility.View, layer ecs.Lay
             }
             */
         }
-    }
-
-    donburi.SetValue(entry, component.Actions, component.ActionsData{
-        TriggerMap: tm,
-        CooldownMap: cdm,
-        ActionMap: am,
     })
+
+    donburi.SetValue(entry, component.Actions, ad)
 
     return &entity
 }

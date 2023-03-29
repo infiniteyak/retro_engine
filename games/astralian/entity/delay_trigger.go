@@ -16,20 +16,11 @@ func AddDelayTrigger(ecs *ecs.ECS, delay int, foo func()) *donburi.Entity {
     entry := ecs.World.Entry(entity)
 
     // Actions
-    tm := make(map[component.ActionId]bool)
-    tm[component.TriggerFunction_actionid] = true
-    cdm := make(map[component.ActionId]component.Cooldown)
-    cdm[component.TriggerFunction_actionid] = component.Cooldown{Cur:delay, Max:delay}
-    am := make(map[component.ActionId]func())
-    
-    // Advance to next screen
-    am[component.TriggerFunction_actionid] = foo
+    ad := component.NewActions()
+    ad.AddCooldownAction(component.TriggerFunction_actionid, delay, foo)
+    ad.TriggerMap[component.TriggerFunction_actionid] = true
 
-    donburi.SetValue(entry, component.Actions, component.ActionsData{
-        TriggerMap: tm,
-        CooldownMap: cdm,
-        ActionMap: am,
-    })
+    donburi.SetValue(entry, component.Actions, ad)
 
     return &entity
 }

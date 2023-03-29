@@ -38,10 +38,20 @@ const (
     Follow_actionid
 )
 
+type ActionTypeId int
+
+const (
+    Undefined_actiontypeid ActionTypeId = iota
+    Cooldown_actiontypeid
+    Normal_actiontypeid
+    Upkeep_actiontypeid
+)
+
 type ActionsData struct {
     TriggerMap map[ActionId]bool
     CooldownMap map[ActionId]Cooldown
     ActionMap map[ActionId]func()
+    TypeMap map[ActionId]ActionTypeId
 }
 
 var Actions = donburi.NewComponentType[ActionsData]()
@@ -55,13 +65,46 @@ func (this *Cooldown) Reset() {
     this.Cur = this.Max
 }
 
+func (this *ActionsData) ResetCooldown(actionId ActionId) {
+    val := this.CooldownMap[actionId].Max
+    this.CooldownMap[actionId] = Cooldown{Cur:val, Max:val}
+}
+
+func (this *ActionsData) SetCooldown(actionId ActionId, newVal int) {
+    max := this.CooldownMap[actionId].Max
+    this.CooldownMap[actionId] = Cooldown{Cur:newVal, Max:max}
+}
+
+func (this *ActionsData) AddCooldownAction( actionId ActionId, 
+                                            maxCooldown int,
+                                            actionFunc func() ) {
+    this.TriggerMap[actionId] = false
+    this.CooldownMap[actionId] = Cooldown{Cur: maxCooldown, Max: maxCooldown}
+    this.ActionMap[actionId] = actionFunc
+    this.TypeMap[actionId] = Cooldown_actiontypeid
+}
+
+func (this *ActionsData) AddNormalAction( actionId ActionId, 
+                                          actionFunc func() ) {
+    this.TriggerMap[actionId] = false
+    this.ActionMap[actionId] = actionFunc
+    this.TypeMap[actionId] = Normal_actiontypeid
+}
+
+func (this *ActionsData) AddUpkeepAction(actionFunc func()) {
+    this.ActionMap[Upkeep_actionid] = actionFunc
+    this.TypeMap[Upkeep_actionid] = Upkeep_actiontypeid 
+}
+
 func NewActions() ActionsData {
     tm := make(map[ActionId]bool)
     cdm := make(map[ActionId]Cooldown)
     am := make(map[ActionId]func())
+    atm := make(map[ActionId]ActionTypeId)
     return ActionsData {
         TriggerMap: tm,
         CooldownMap: cdm,
         ActionMap: am,
+        TypeMap: atm,
     }
 }
