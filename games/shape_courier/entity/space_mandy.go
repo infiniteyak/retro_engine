@@ -4,6 +4,7 @@ import (
 	//gMath "math"
 	//"math/rand"
 	//"strconv"
+	sc_comp "github.com/infiniteyak/retro_engine/games/shape_courier/component"
 
 	"github.com/infiniteyak/retro_engine/engine/component"
 	//"github.com/infiniteyak/retro_engine/engine/entity"
@@ -16,7 +17,31 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
-type mandyData struct {
+const (
+    spaceMandyDamage = 1.0
+
+    spaceMandyColliderRadius = 4
+    spaceMandyColliderOffsetX = 0
+    spaceMandyColliderOffsetY = 0
+
+    spaceMandySpriteName = "SpaceMandy"
+    spaceMandySpriteInitialTag = "stand_down"
+    spaceMandySpriteMoveLeftTag = "move_left"
+    spaceMandySpriteMoveRightTag = "move_right"
+    spaceMandySpriteMoveUpTag = "move_up"
+    spaceMandySpriteMoveDownTag = "move_down"
+    spaceMandySpriteIdleLeftTag = "stand_left"
+    spaceMandySpriteIdleRightTag = "stand_right"
+    spaceMandySpriteIdleUpTag = "stand_up"
+    spaceMandySpriteIdleDownTag = "stand_down"
+    spaceMandySpriteDeathTag = "death"
+    spaceMandySpriteDeadTag = "dead"
+
+    spaceMandyMoveSpeed = 0.6
+    //spaceMandyTeleportCd = 400
+)
+
+type MandyData struct {
     ecs *ecs.ECS
     entry *donburi.Entry
     entity *donburi.Entity
@@ -29,16 +54,42 @@ type mandyData struct {
     view component.ViewData
     //velocity component.VelocityData
     graphicObject component.GraphicObjectData
+    spriteData component.SpriteData
     actions component.ActionsData
     inputs component.InputsData
+    mazeData *MazeData
 
     dir Direction
+    
+    disableControls bool
+    tpDestination sc_comp.DestinationData
+    allowTp bool
+}
+
+var spaceMandyDirMoveMap = map[Direction]string {
+    North_direction: spaceMandySpriteMoveUpTag,
+    South_direction: spaceMandySpriteMoveDownTag,
+    East_direction: spaceMandySpriteMoveRightTag,
+    West_direction: spaceMandySpriteMoveLeftTag,
+}
+
+var spaceMandyDirIdleMap = map[Direction]string {
+    North_direction: spaceMandySpriteIdleUpTag,
+    South_direction: spaceMandySpriteIdleDownTag,
+    East_direction: spaceMandySpriteIdleRightTag,
+    West_direction: spaceMandySpriteIdleLeftTag,
+}
+
+func (this *MandyData) move(direction Direction) {
+    *this.position.Point, direction = this.mazeData.ResolveMove(*this.position.Point, direction, spaceMandyMoveSpeed)
+    this.spriteData.Play(spaceMandyDirMoveMap[direction])
+    this.dir = direction
 }
 
 func AddSpaceMandy( ecs *ecs.ECS,
               view *utility.View,
-              md *MazeData) {
-    this := &mandyData{}
+              md *MazeData) *MandyData {
+    this := &MandyData{}
     this.ecs = ecs
 
     entity := this.ecs.Create(
@@ -48,42 +99,36 @@ func AddSpaceMandy( ecs *ecs.ECS,
         component.GraphicObject,
         component.Inputs,
         component.Actions,
-        //component.Velocity,
         component.Collider,
         // component.Health,
         component.Factions,
         component.Damage,
+        component.PlayerTag,
         )
     this.entity = &entity
 
     event.RegisterEntityEvent.Publish(this.ecs.World, event.RegisterEntity{Entity:this.entity})
     this.entry = this.ecs.World.Entry(*this.entity)
     
-    // Velocity
-    /*
-    this.velocity = component.VelocityData{Velocity: &math.Vec2{}} //TODO add init func
-    donburi.SetValue(this.entry, component.Velocity, this.velocity)
-    */
+    this.mazeData = md
+    this.dir = South_direction
 
     // Factions
-    factions := []component.FactionId{component.Player_factionid}
-    this.factions = component.FactionsData{Values: factions}
+    this.factions = component.NewSingleFaction(component.Player_factionid)
     donburi.SetValue(this.entry, component.Factions, this.factions)
 
     // Damage
-    this.damage = component.NewDamageData() //TODO fix
-    *this.damage.Value = 1.0
+    this.damage = component.NewDamageData(spaceMandyDamage)
     donburi.SetValue(this.entry, component.Damage, this.damage)
 
     // Position
-    x, y := md.GetStartPosition()
-    this.position = component.NewPositionData(x, y)
+    this.position = component.NewPositionData(md.GetStartPosition())
     donburi.SetValue(this.entry, component.Position, this.position)
 
     //Collider
-    this.collider = component.NewColliderData()
-    hb := component.NewHitbox(4, 0, 0)
-    this.collider.Hitboxes = append(this.collider.Hitboxes, hb)
+    this.collider = component.NewSingleHBCollider(spaceMandyColliderRadius, 
+                                                  spaceMandyColliderOffsetX, 
+                                                  spaceMandyColliderOffsetY)
     donburi.SetValue(this.entry, component.Collider, this.collider)
 
     // View
@@ -91,11 +136,9 @@ func AddSpaceMandy( ecs *ecs.ECS,
     donburi.SetValue(this.entry, component.View, this.view)
 
     // Graphic Object
-    this.graphicObject = component.NewGraphicObjectData() //TODO needs init functions?
-    playerSd := component.SpriteData{}
-    playerSd.Load("SpaceMandy", nil)
-    playerSd.Play("stand_down")
-    this.graphicObject.Renderables = append(this.graphicObject.Renderables, &playerSd)
+    this.graphicObject = component.NewGraphicObjectData()
+    this.spriteData = component.NewSpriteData(spaceMandySpriteName, nil, spaceMandySpriteInitialTag)
+    this.graphicObject.Renderables = append(this.graphicObject.Renderables, &this.spriteData)
     donburi.SetValue(this.entry, component.GraphicObject, this.graphicObject)
 
     // Inputs
@@ -110,55 +153,108 @@ func AddSpaceMandy( ecs *ecs.ECS,
     this.actions = component.NewActions()
 
     // Move Left
-    //TODO clean up
-    moveSpeed := 0.3 //TODO make this a const
-    this.actions.AddNormalAction(component.MoveLeft_actionid, func(){
-        //this.velocity.Velocity.X = -1.0 * moveSpeed //TODO accessor functions?
-        *this.position.Point = md.ResolveMove(*this.position.Point, West_direction, moveSpeed)
-        playerSd.Play("move_left") //TODO is there was better way?
-        this.dir = West_direction
-    })
+    this.actions.AddNormalAction(component.MoveLeft_actionid, func(){})
 
     // Move Right
-    this.actions.AddNormalAction(component.MoveRight_actionid, func(){
-        *this.position.Point = md.ResolveMove(*this.position.Point, East_direction, moveSpeed)
-        playerSd.Play("move_right") //TODO is there was better way?
-        this.dir = East_direction
-    })
+    this.actions.AddNormalAction(component.MoveRight_actionid, func(){})
 
     // Move Up
-    this.actions.AddNormalAction(component.MoveUp_actionid, func(){
-        *this.position.Point = md.ResolveMove(*this.position.Point, North_direction, moveSpeed)
-        playerSd.Play("move_up") //TODO is there was better way?
-        this.dir = North_direction
+    this.actions.AddNormalAction(component.MoveUp_actionid, func(){})
+
+    // Move Down
+    this.actions.AddNormalAction(component.MoveDown_actionid, func(){})
+    
+    // ReadyTeleport
+    this.actions.AddNormalAction(component.ReadyTeleport_actionid, func(){
+        this.allowTp = true
+        this.actions.TriggerMap[component.ReadyTeleport_actionid] = false
     })
-    // Move Up
-    this.actions.AddNormalAction(component.MoveDown_actionid, func(){
-        *this.position.Point = md.ResolveMove(*this.position.Point, South_direction, moveSpeed)
-        playerSd.Play("move_down") //TODO is there was better way?
-        this.dir = South_direction
+
+    // Destroy (killed)
+    this.actions.AddNormalAction(component.Destroy_actionid, func(){
+        this.actions.TriggerMap[component.Destroy_actionid] = false
+        this.disableControls = true
+
+        //adjust lives count (and note if it's game over)
+
+        //despawn ghosts
+        event.DespawnAllEnemiesEvent.Publish(this.ecs.World, event.DespawnAllEnemies{})
+
+        //play death animation
+        //on loop 
+        //  if it was game over, do game over stuff
+        //  otherwise reset for new life
+        this.spriteData.Play(spaceMandySpriteDeathTag)
+        this.spriteData.SetLoopCallback(func() {
+            this.spriteData.Play(spaceMandySpriteDeadTag)
+            this.spriteData.SetLoopCallback(nil)
+
+            event.AdjustLivesEvent.Publish(
+                this.ecs.World, 
+                event.AdjustLives{
+                    Value: -1,
+                },
+            )
+        })
+    })
+
+    // Teleport
+    this.actions.AddNormalAction(component.Teleport_actionid, func(){
+        if this.allowTp {
+            this.allowTp = false
+            *this.collider.Enable = false
+            this.disableControls = true
+            this.spriteData.Play("teleport_out")
+            this.spriteData.SetLoopCallback(func() {
+                //*this.spriteData.RenderableData.GetTransInfo().Hide = true
+                this.spriteData.Play("teleport_in")
+                //this.position.Point.X -= 20
+                this.position.Point.X = this.tpDestination.Point.X
+                this.position.Point.Y = this.tpDestination.Point.Y
+                this.spriteData.SetLoopCallback(func() {
+                    this.spriteData.SetLoopCallback(nil)
+                    this.disableControls = false
+                    *this.collider.Enable = true
+                    this.spriteData.Play(spaceMandySpriteInitialTag)
+                })
+            })
+        }
+        this.actions.TriggerMap[component.Teleport_actionid] = false
+        //this.actions.ResetCooldown(component.Teleport_actionid)
     })
 
     this.actions.AddUpkeepAction(func(){
-        // if they're both on or both off...
-        if !this.actions.TriggerMap[component.MoveRight_actionid] &&
-           !this.actions.TriggerMap[component.MoveLeft_actionid] &&
-           !this.actions.TriggerMap[component.MoveUp_actionid] &&
-           !this.actions.TriggerMap[component.MoveDown_actionid] {
-            switch this.dir {
-            case East_direction:
-                playerSd.Play("stand_right")
-            case West_direction:
-                playerSd.Play("stand_left")
-            case North_direction:
-                playerSd.Play("stand_up")
-            case South_direction:
-                playerSd.Play("stand_down")
+        if !this.disableControls {
+            if this.actions.TriggerMap[component.MoveRight_actionid] {
+                this.move(East_direction)
+            } else if this.actions.TriggerMap[component.MoveLeft_actionid] {
+                this.move(West_direction)
+            } else if this.actions.TriggerMap[component.MoveUp_actionid] {
+                this.move(North_direction)
+            } else if this.actions.TriggerMap[component.MoveDown_actionid] {
+                this.move(South_direction)
+            }
+
+            if !this.actions.TriggerMap[component.MoveRight_actionid] &&
+               !this.actions.TriggerMap[component.MoveLeft_actionid] &&
+               !this.actions.TriggerMap[component.MoveUp_actionid] &&
+               !this.actions.TriggerMap[component.MoveDown_actionid] {
+                this.spriteData.Play(spaceMandyDirIdleMap[this.dir])
+            }
+        } 
+
+		c := component.Collider.Get(this.entry)
+        for _, target := range c.Collisions {
+            if target.HasComponent(sc_comp.Destination) {
+                if this.actions.CooldownMap[component.Teleport_actionid].Cur == 0 {
+                    this.actions.TriggerMap[component.Teleport_actionid] = true
+                    this.tpDestination = *sc_comp.Destination.Get(target)
+                }
             }
         }
     })
 
     donburi.SetValue(this.entry, component.Actions, this.actions)
  
-    return 
+    return this
 }

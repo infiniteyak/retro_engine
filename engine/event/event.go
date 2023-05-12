@@ -44,3 +44,17 @@ var RemoveFromFormationEvent = events.NewEventType[RemoveFromFormation]()
 
 type ShipDestroyed struct { }
 var ShipDestroyedEvent = events.NewEventType[ShipDestroyed]()
+
+type AiMode struct {
+    Value int
+}
+var SetAiModeEvent = events.NewEventType[AiMode]()
+
+type RunMode struct { }
+var SetRunModeEvent = events.NewEventType[RunMode]()
+
+type DespawnAllEnemies struct { }
+var DespawnAllEnemiesEvent = events.NewEventType[DespawnAllEnemies]()
+
+type AdjustLives struct {Value int}
+var AdjustLivesEvent = events.NewEventType[AdjustLives]()

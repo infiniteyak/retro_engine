@@ -41,7 +41,7 @@ func (r *collisions) Update(ecs *ecs.ECS) {
                 positionB := component.Position.Get(entryB)
                 colliderB := component.Collider.Get(entries[j])
                 viewB := component.View.Get(entryB)
-                if viewA.View == viewB.View {
+                if viewA.View == viewB.View  && *colliderA.Enable && *colliderB.Enable {
                     if CheckHitboxCollision(colliderA, colliderB, positionA, positionB) {
                         colliderA.Collisions = append(colliderA.Collisions, entries[j])
                         colliderB.Collisions = append(colliderB.Collisions, entries[i])

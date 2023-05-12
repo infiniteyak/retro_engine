@@ -259,8 +259,7 @@ func AddAlien( ecs *ecs.ECS,
     donburi.SetValue(ad.entry, component.Factions, ad.factions)
 
     // Damage
-    ad.damage = component.NewDamageData()
-    *ad.damage.Value = AlienDamage
+    ad.damage = component.NewDamageData(AlienDamage)
     donburi.SetValue(ad.entry, component.Damage, ad.damage)
 
     // Health

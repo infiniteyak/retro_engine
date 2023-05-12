@@ -10,9 +10,9 @@ type DamageData struct {
     OnDamage func()
 }
 
-func NewDamageData() DamageData {
+func NewDamageData(v float64) DamageData {
     return DamageData{
-        Value: new(float64),
+        Value: &v,
         DestroyOnDamage: new(bool),
     }
 }

@@ -6,7 +6,7 @@ import (
 	//"strconv"
 
 	"github.com/infiniteyak/retro_engine/engine/component"
-	//"github.com/infiniteyak/retro_engine/engine/entity"
+	sc_comp "github.com/infiniteyak/retro_engine/games/shape_courier/component"
 	"github.com/infiniteyak/retro_engine/engine/event"
 	"github.com/infiniteyak/retro_engine/engine/layer"
 	"github.com/infiniteyak/retro_engine/engine/utility"
@@ -16,26 +16,23 @@ import (
     //"math"
 )
 
-const (
-    dotPointValue = 10
-    dotHealth = 1.0
-)
-
-type dotData struct {
+type tpData struct {
     ecs *ecs.ECS
     entry *donburi.Entry
     entity *donburi.Entity
     position component.PositionData
+    destination sc_comp.DestinationData
     view component.ViewData
     collider component.ColliderData
-    actions component.ActionsData
     graphicObject component.GraphicObjectData
 }
 
-func AddDot( ecs *ecs.ECS,
+func AddTeleporter( ecs *ecs.ECS,
              x, y float64,
+             dx, dy float64,
+             hbOffsetX, hbOffsetY float64,
              view *utility.View) {
-    this := &dotData{}
+    this := &tpData{}
     this.ecs = ecs
 
     entity := this.ecs.Create(
@@ -43,8 +40,8 @@ func AddDot( ecs *ecs.ECS,
         component.Position, 
         component.View,
         component.GraphicObject,
-        component.Actions,
         component.Collider,
+        sc_comp.Destination,
         )
     this.entity = &entity
 
@@ -55,9 +52,13 @@ func AddDot( ecs *ecs.ECS,
     this.position = component.NewPositionData(x, y)
     donburi.SetValue(this.entry, component.Position, this.position)
 
+    // Destination
+    this.destination = sc_comp.NewDestinationData(dx, dy)
+    donburi.SetValue(this.entry, sc_comp.Destination, this.destination)
+
     //Collider
     this.collider = component.NewColliderData()
-    hb := component.NewHitbox(1, 0, 0)
+    hb := component.NewHitbox(1, hbOffsetX, hbOffsetY)
     this.collider.Hitboxes = append(this.collider.Hitboxes, hb)
     donburi.SetValue(this.entry, component.Collider, this.collider)
 
@@ -65,31 +66,9 @@ func AddDot( ecs *ecs.ECS,
     this.graphicObject = component.NewGraphicObjectData()
     spriteData := component.SpriteData{}
     spriteData.Load("Items", nil)
-    spriteData.Play("basic_dot")
+    spriteData.Play("teleporter")
     this.graphicObject.Renderables = append(this.graphicObject.Renderables, &spriteData)
     donburi.SetValue(this.entry, component.GraphicObject, this.graphicObject)
-
-    // Actions
-    this.actions = component.NewActions()
-    this.actions.AddNormalAction(component.Destroy_actionid, func() {
-        this.graphicObject.HideAllRenderables(true)
-        se := event.Score{Value:dotPointValue}
-        event.ScoreEvent.Publish(this.ecs.World, se)
-
-        ree := event.RemoveEntity{Entity:this.entity}
-        event.RemoveEntityEvent.Publish(this.ecs.World, ree)
-    })
-
-    this.actions.AddUpkeepAction(func(){
-		c := component.Collider.Get(this.entry)
-        for _, target := range c.Collisions {
-            if target.HasComponent(component.PlayerTag) {
-                this.actions.TriggerMap[component.Destroy_actionid] = true
-            }
-        }
-    })
-
-    donburi.SetValue(this.entry, component.Actions, this.actions)
 
     // View
     donburi.SetValue(this.entry, component.View, component.ViewData{View:view})

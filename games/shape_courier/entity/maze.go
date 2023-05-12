@@ -2,7 +2,7 @@ package shape_courier_entity
 
 import (
 	//gMath "math"
-	//"math/rand"
+	"math/rand"
 	//"strconv"
 
 	"github.com/infiniteyak/retro_engine/engine/component"
@@ -40,7 +40,6 @@ type MazeData struct {
     entry *donburi.Entry
     entity *donburi.Entity
 
-    //position component.PositionData
     view component.ViewData
 
     grid [][]GridSpace
@@ -49,28 +48,136 @@ type MazeData struct {
 
     StartR int
     StartC int
+    
+    SpawnR int
+    SpawnC int
+}
+
+func (this *MazeData) GetNWCorner() utility.Point {
+    return this.grid[0][0].Center
+}
+
+func (this *MazeData) GetNECorner() utility.Point {
+    return this.grid[0][this.gridColumns-1].Center
+}
+
+func (this *MazeData) GetSECorner() utility.Point {
+    return this.grid[this.gridRows-1][this.gridColumns-1].Center
+}
+
+func (this *MazeData) GetSWCorner() utility.Point {
+    return this.grid[this.gridRows-1][0].Center
 }
 
 func (this *MazeData) GetStartPosition() (float64, float64) {
     return this.grid[this.StartR][this.StartC].Center.X, this.grid[this.StartR][this.StartC].Center.Y
 }
 
+func (this *MazeData) GetSpawnPosition() (float64, float64) {
+    return this.grid[this.SpawnR][this.SpawnC].Center.X, this.grid[this.SpawnR][this.SpawnC].Center.Y
+}
+
 type Direction int
 const (
-    North_direction Direction = iota
-    East_direction
+    Undefined_direction Direction = iota
     South_direction
+    East_direction
+    North_direction
     West_direction
 )
 
-//given a point, which grid space is that in
-func (this *MazeData) findCoordinates(pos utility.Point) (int, int) {
-    /*
-    r_old := int((pos.Y - initialMazeOffset)/wallSpriteHeight)
-    c_old := int((pos.X - initialMazeOffset)/wallSpriteWidth)
-    */
+func distance(a, b utility.Point) float64 { //TODO move to utility
+    return math.Sqrt(math.Pow(a.X - b.X, 2) + math.Pow(a.Y - b.Y, 2))
+}
 
-    //println("c map: ", pos.X, pos.Y, r, c)
+func (this *MazeData) GetRandomDirection(pos utility.Point, curDir Direction) Direction {
+    r, c := this.FindCoordinates(pos)
+    selected := Undefined_direction
+    backwards := Undefined_direction
+    switch curDir {
+    case North_direction:
+        backwards = South_direction
+    case South_direction:
+        backwards = North_direction
+    case East_direction:
+        backwards = West_direction
+    case West_direction:
+        backwards = East_direction
+    }
+    options := []Direction{}
+    if !this.grid[r-1][c].Solid && curDir != South_direction {
+        options = append(options, North_direction)
+    }
+    if !this.grid[r+1][c].Solid && curDir != North_direction {
+        options = append(options, South_direction)
+    }
+    if !this.grid[r][c-1].Solid && curDir != East_direction {
+        options = append(options, West_direction)
+    }
+    if !this.grid[r][c+1].Solid && curDir != West_direction {
+        options = append(options, East_direction)
+    }
+    if len(options) > 0 {
+        selected = options[rand.Intn(len(options))]
+    }
+    if selected == Undefined_direction {
+        selected = backwards
+    }
+    return selected
+}
+// what direction is closest to target, avoiding turning around completely
+func (this *MazeData) GetDirectionToTarget(pos utility.Point, target utility.Point, curDir Direction) Direction {
+    r, c := this.FindCoordinates(pos)
+    bestDst := -1.0
+    selected := Undefined_direction
+    backwards := Undefined_direction
+    switch curDir {
+    case North_direction:
+        backwards = South_direction
+    case South_direction:
+        backwards = North_direction
+    case East_direction:
+        backwards = West_direction
+    case West_direction:
+        backwards = East_direction
+    }
+    if !this.grid[r-1][c].Solid && curDir != South_direction {
+        newDst := distance(this.grid[r-1][c].Center, target)
+        if bestDst < 0 || newDst < bestDst {
+            selected = North_direction
+            bestDst = newDst
+        }
+    }
+    if !this.grid[r+1][c].Solid && curDir != North_direction {
+        newDst := distance(this.grid[r+1][c].Center, target)
+        if bestDst < 0 || newDst < bestDst {
+            selected = South_direction
+            bestDst = newDst
+        }
+    }
+    if !this.grid[r][c-1].Solid && curDir != East_direction {
+        newDst := distance(this.grid[r][c-1].Center, target)
+        if bestDst < 0 || newDst < bestDst {
+            selected = West_direction
+            bestDst = newDst
+        }
+    }
+    if !this.grid[r][c+1].Solid && curDir != West_direction {
+        newDst := distance(this.grid[r][c+1].Center, target)
+        if bestDst < 0 || newDst < bestDst {
+            selected = East_direction
+            bestDst = newDst
+        }
+    }
+    //TODO what if selected dir is undefined?
+    if selected == Undefined_direction {
+        selected = backwards
+    }
+    return selected
+}
+
+//given a point, which grid space is that in
+func (this *MazeData) FindCoordinates(pos utility.Point) (int, int) {
     var r int
     var c int
     for r = 0; r < this.gridRows; r++ {
@@ -83,166 +190,240 @@ func (this *MazeData) findCoordinates(pos utility.Point) (int, int) {
             break
         }
     }
-    /*
-    if r_old != r || c_old != c {
-        println("Bad comp: ",r_old, c_old, r, c)
-    }
-    */
 
     return r, c
 }
 
-//given a position and move speed, return a new position
-func (this *MazeData) ResolveMove(pos utility.Point, dir Direction, speed float64) utility.Point {
-    r, c := this.findCoordinates(pos)
-
-    //correct direction if needed
-    turning := false
+func (this *MazeData) findOpenSpaceDir(r, c int, 
+                                    dir Direction, 
+                                    breakPositive bool) Direction {
+    distance := 1
+    var a int
+    var b int
+    var bLimit int
+    var forwardMod int
+    var gridAccess func(int, int) GridSpace
+    var posDir Direction
+    var negDir Direction
     switch dir {
-    case East_direction:
-        if !this.grid[r][c+1].Solid && pos.Y != this.grid[r][c].Center.Y {
-            turning = true
-            if pos.Y > this.grid[r][c].Center.Y {
-                dir = North_direction
-            } else {
-                dir = South_direction
-            }
-        } else if this.grid[r][c+1].Solid && 
-                  !this.grid[r+1][c+1].Solid &&
-                  pos.Y >= this.grid[r][c].Center.Y {
-            dir = South_direction
-        } else if this.grid[r][c+1].Solid && 
-                  !this.grid[r-1][c+1].Solid &&
-                  pos.Y <= this.grid[r][c].Center.Y {
-            dir = North_direction
-        } 
-    case West_direction:
-        if !this.grid[r][c-1].Solid && pos.Y != this.grid[r][c].Center.Y {
-            turning = true
-            if pos.Y > this.grid[r][c].Center.Y {
-                dir = North_direction
-            } else {
-                dir = South_direction
-            }
-        } else if this.grid[r][c-1].Solid && 
-                  !this.grid[r+1][c-1].Solid &&
-                  pos.Y >= this.grid[r][c].Center.Y {
-            dir = South_direction
-        } else if this.grid[r][c-1].Solid && 
-                  !this.grid[r-1][c-1].Solid &&
-                  pos.Y <= this.grid[r][c].Center.Y {
-            dir = North_direction
-        } 
-    case South_direction:
-        if !this.grid[r+1][c].Solid && pos.X != this.grid[r][c].Center.X {
-            turning = true
-            if pos.X > this.grid[r][c].Center.X {
-                dir = West_direction
-            } else {
-                dir = East_direction
-            }
-        } else if this.grid[r+1][c].Solid && 
-                  !this.grid[r+1][c-1].Solid &&
-                  pos.X <= this.grid[r][c].Center.X {
-            dir = West_direction
-        } else if this.grid[r+1][c].Solid && 
-                  !this.grid[r+1][c+1].Solid &&
-                  pos.X >= this.grid[r][c].Center.X {
-            dir = East_direction
-        } 
     case North_direction:
-        if !this.grid[r-1][c].Solid && pos.X != this.grid[r][c].Center.X {
-            turning = true
-            if pos.X > this.grid[r][c].Center.X {
-                dir = West_direction
-            } else {
-                dir = East_direction
-            }
-        } else if this.grid[r-1][c].Solid && 
-                  !this.grid[r-1][c-1].Solid &&
-                  pos.X <= this.grid[r][c].Center.X {
-            dir = West_direction
-        } else if this.grid[r-1][c].Solid && 
-                  !this.grid[r-1][c+1].Solid &&
-                  pos.X >= this.grid[r][c].Center.X {
-            dir = East_direction
-        } 
+        bLimit = this.gridColumns
+        a = r
+        b = c
+        forwardMod = -1
+        gridAccess = func(a int, b int) GridSpace {
+            return this.grid[a][b]
+        }
+        posDir = East_direction
+        negDir = West_direction
+    case South_direction:
+        bLimit = this.gridColumns
+        a = r
+        b = c
+        forwardMod = 1
+        gridAccess = func(a int, b int) GridSpace {
+            return this.grid[a][b]
+        }
+        posDir = East_direction
+        negDir = West_direction
+    case East_direction:
+        bLimit = this.gridRows
+        a = c
+        b = r
+        forwardMod = 1
+        gridAccess = func(a int, b int) GridSpace {
+            return this.grid[b][a]
+        }
+        posDir = South_direction
+        negDir = North_direction
+    case West_direction:
+        bLimit = this.gridRows
+        a = c
+        b = r
+        forwardMod = -1
+        gridAccess = func(a int, b int) GridSpace {
+            return this.grid[b][a]
+        }
+        posDir = South_direction
+        negDir = North_direction
     }
-    //TODO use switches?
-    if dir == East_direction {
-        if this.grid[r][c].Center.X <= pos.X { //moving out of space
-            if this.grid[r][c+1].Solid { //TODO add some magic to make it easier to turn
-                return utility.Point{X:this.grid[r][c].Center.X, Y:pos.Y}
-            } else {
-                return utility.Point{X:pos.X+speed, Y:pos.Y}
-            }
-        } else if this.grid[r][c].Center.X > pos.X { //moving into space
-            if pos.X + speed > this.grid[r][c].Center.X { //moving past center
-                if this.grid[r][c+1].Solid || turning { //next space is solid so stop
-                    return utility.Point{X:this.grid[r][c].Center.X, Y:pos.Y}
-                } else {
-                    return utility.Point{X:pos.X+speed, Y:pos.Y}
-                }
-            } else {
-                return utility.Point{X:pos.X+speed, Y:pos.Y}
-            }
+    disqPos := false
+    disqNeg := false
+    for {
+        if b+distance >= bLimit || gridAccess(a, b+distance).Solid { // would hit a wall
+            disqPos = true
         }
-    } else if dir == West_direction {
-        if this.grid[r][c].Center.X >= pos.X { //moving out of space
-            if this.grid[r][c-1].Solid { //TODO add some magic to make it easier to turn
-                return utility.Point{X:this.grid[r][c].Center.X, Y:pos.Y}
-            } else {
-                return utility.Point{X:pos.X-speed, Y:pos.Y}
-            }
-        } else if this.grid[r][c].Center.X < pos.X { //moving into space
-            if pos.X - speed < this.grid[r][c].Center.X { //moving past center
-                if this.grid[r][c-1].Solid || turning { //next space is solid so stop
-                    return utility.Point{X:this.grid[r][c].Center.X, Y:pos.Y}
-                } else {
-                    return utility.Point{X:pos.X-speed, Y:pos.Y}
-                }
-            } else {
-                return utility.Point{X:pos.X-speed, Y:pos.Y}
-            }
+        if b-distance < 0 || gridAccess(a, b-distance).Solid { // would hit a wall
+            disqNeg = true
         }
-    } else if dir == North_direction {
-        if this.grid[r][c].Center.Y >= pos.Y { //moving out of space
-            if this.grid[r-1][c].Solid { //TODO add some magic to make it easier to turn
-                return utility.Point{X:pos.X, Y:this.grid[r][c].Center.Y}
-            } else {
-                return utility.Point{X:pos.X, Y:pos.Y-speed}
-            }
-        } else if this.grid[r][c].Center.Y < pos.Y { //moving into space
-            if pos.Y - speed < this.grid[r][c].Center.Y { //moving past center
-                if this.grid[r-1][c].Solid || turning { //next space is solid so stop
-                    return utility.Point{X:pos.X, Y:this.grid[r][c].Center.Y}
-                } else {
-                    return utility.Point{X:pos.X, Y:pos.Y-speed}
-                }
-            } else {
-                return utility.Point{X:pos.X, Y:pos.Y-speed}
-            }
+        if disqPos && disqNeg { // just keep going in the same dir
+            return Undefined_direction
         }
-    } else if dir == South_direction {
-        if this.grid[r][c].Center.Y <= pos.Y { //moving out of space
-            if this.grid[r+1][c].Solid { //TODO add some magic to make it easier to turn
-                return utility.Point{X:pos.X, Y:this.grid[r][c].Center.Y}
+
+        foundPos := !disqPos && !gridAccess(a+forwardMod, b+distance).Solid //east
+        foundNeg := !disqNeg && !gridAccess(a+forwardMod, b-distance).Solid // west
+
+        if foundPos && foundNeg {
+            if breakPositive {
+                return posDir
             } else {
-                return utility.Point{X:pos.X, Y:pos.Y+speed}
+                return negDir
             }
-        } else if this.grid[r][c].Center.Y > pos.Y { //moving into space
-            if pos.Y + speed < this.grid[r][c].Center.Y { //moving past center
-                if this.grid[r+1][c].Solid || turning { //next space is solid so stop
-                    return utility.Point{X:pos.X, Y:this.grid[r][c].Center.Y}
-                } else {
-                    return utility.Point{X:pos.X, Y:pos.Y+speed}
-                }
-            } else {
-                return utility.Point{X:pos.X, Y:pos.Y+speed}
+        } else if foundPos {
+            return posDir
+        } else if foundNeg {
+            return negDir
+        }
+        distance += 1
+    }
+    return Undefined_direction //TODO raise exception?
+}
+
+func (this *MazeData) PickDirection(pos utility.Point, 
+                                    dirA, dirB Direction) Direction {
+    r, c := this.FindCoordinates(pos)
+
+    var aSolid bool
+    //var bSolid bool
+
+    switch dirA {
+    case North_direction:
+        aSolid = this.grid[r-1][c].Solid
+    case South_direction:
+        aSolid = this.grid[r+1][c].Solid
+    case West_direction:
+        aSolid = this.grid[r][c-1].Solid
+    case East_direction:
+        aSolid = this.grid[r][c+1].Solid
+    }
+
+    if aSolid {
+        return dirA
+    } else {
+        return dirB
+    }
+}
+
+func (this *MazeData) ResolveMove(pos utility.Point, 
+                                  dir Direction, 
+                                  speed float64) (utility.Point, Direction) {
+    r, c := this.FindCoordinates(pos)
+    
+    //First check if we are moving into a wall, and need to turn
+    turning := false
+
+    moveDir := dir
+    var forwardSpaceIsSolid bool
+    switch dir {
+    case North_direction:
+        forwardSpaceIsSolid = this.grid[r-1][c].Solid
+    case South_direction:
+        forwardSpaceIsSolid = this.grid[r+1][c].Solid
+    case West_direction:
+        forwardSpaceIsSolid = this.grid[r][c-1].Solid
+    case East_direction:
+        forwardSpaceIsSolid = this.grid[r][c+1].Solid
+    }
+
+    var aligned bool
+    var breakPos bool
+    var leaving bool
+    if dir == North_direction || dir == South_direction {
+        aligned = pos.X == this.grid[r][c].Center.X
+
+        breakPos = pos.X > this.grid[r][c].Center.X
+        if dir == North_direction {
+            leaving = pos.Y <= this.grid[r][c].Center.Y
+        } else {
+            leaving = pos.Y >= this.grid[r][c].Center.Y
+        }
+        if breakPos {
+            moveDir = West_direction
+        } else {
+            moveDir = East_direction
+        }
+    } else if dir == West_direction || dir == East_direction {
+        aligned = pos.Y == this.grid[r][c].Center.Y
+
+        breakPos = pos.Y > this.grid[r][c].Center.Y
+        //leaving = (dir == West_direction) == breakPos
+        if dir == West_direction {
+            leaving = pos.X <= this.grid[r][c].Center.X
+        } else {
+            leaving = pos.X >= this.grid[r][c].Center.X
+        }
+        if breakPos {
+            moveDir = North_direction
+        } else {
+            moveDir = South_direction
+        }
+    }
+
+    //TODO I think there's a bug here where if we are moving fast enough
+    // you can overshoot. I think this would happen if the move speed is
+    // greater than (or equal to?) half the height of a space.
+    // That would be so fast the game would be unplayable though (at least
+    // at the current resolution). So I'm going to ignore it for now.
+    var stop bool
+    if !forwardSpaceIsSolid && !aligned { //move towards center of current space
+        turning = true //meaning we need to stop at the center point
+        dir = moveDir // TODO do I really need movedir?
+    } else if forwardSpaceIsSolid { // find direction to nearest open space
+        openDir := this.findOpenSpaceDir(r, c, dir, breakPos)
+        if openDir != Undefined_direction && leaving {
+            dir = openDir
+        } else { //there's no where to go so stop at center point
+            stop = true
+        }
+    }
+    if leaving && stop { // we can't go farther in this direction, so stop
+        if dir == North_direction || dir == South_direction {
+            return utility.Point{X:pos.X, Y:this.grid[r][c].Center.Y}, dir
+        } else {
+            return utility.Point{X:this.grid[r][c].Center.X, Y:pos.Y}, dir
+        }
+    }
+    if (!leaving && stop) || turning { //move up to the center but no farther
+        switch dir {
+        case North_direction:
+            if pos.Y - speed < this.grid[r][c].Center.Y { //moving past the center
+                return utility.Point{X:pos.X, Y:this.grid[r][c].Center.Y}, dir
+            } else { // didn't reach the center
+                return utility.Point{X:pos.X, Y:pos.Y-speed}, dir
+            }
+        case South_direction:
+            if pos.Y + speed > this.grid[r][c].Center.Y { //moving past the center
+                return utility.Point{X:pos.X, Y:this.grid[r][c].Center.Y}, dir
+            } else { // didn't reach the center
+                return utility.Point{X:pos.X, Y:pos.Y+speed}, dir
+            }
+        case West_direction:
+            if pos.X - speed < this.grid[r][c].Center.X { //moving past the center
+                return utility.Point{X:this.grid[r][c].Center.X, Y:pos.Y}, dir
+            } else { // didn't reach the center
+                return utility.Point{X:pos.X-speed, Y:pos.Y}, dir
+            }
+        case East_direction:
+            if pos.X + speed > this.grid[r][c].Center.X { //moving past the center
+                return utility.Point{X:this.grid[r][c].Center.X, Y:pos.Y}, dir
+            } else { // didn't reach the center
+                return utility.Point{X:pos.X+speed, Y:pos.Y}, dir
             }
         }
     }
-    return pos
+
+    switch dir {
+    case North_direction:
+        return utility.Point{X:pos.X, Y:pos.Y-speed}, dir
+    case South_direction:
+        return utility.Point{X:pos.X, Y:pos.Y+speed}, dir
+    case West_direction:
+        return utility.Point{X:pos.X-speed, Y:pos.Y}, dir
+    case East_direction:
+        return utility.Point{X:pos.X+speed, Y:pos.Y}, dir
+    }
+    
+    return utility.Point{X:pos.X, Y:pos.Y}, dir // TODO exception?
 }
 
 func AddMaze( ecs *ecs.ECS,
@@ -271,10 +452,10 @@ func AddMaze( ecs *ecs.ECS,
         {1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1,},
         {1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1,},
         {1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1,},
-        {1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1,},
+        {1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1,},
         {1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1,},
         {1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1,},
-        {1, 9, 3, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 3, 9, 1,},
+        {1, 9, 5, 6, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 6, 3, 9, 1,},
         {1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1,},
         {1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1,},
         {1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1,},
@@ -294,6 +475,12 @@ func AddMaze( ecs *ecs.ECS,
     }
 
     var curOffsetY float64 = initialMazeOffsetY
+
+    var teleportAOffsetX float64
+    var teleportAOffsetY float64
+    var teleportBOffsetX float64
+    var teleportBOffsetY float64
+
     for r := 0; r < this.gridRows; r++ {
         var curOffsetX float64 = initialMazeOffsetX
         this.grid[r] = make([]GridSpace, this.gridColumns)
@@ -390,6 +577,7 @@ func AddMaze( ecs *ecs.ECS,
                     AddDot(ecs, curOffsetX, curOffsetY, view)
                 }
                 if pattern[r][c] == 4 { //TODO fix
+                    /*
                     entity.AddSpriteObject(
                         ecs, 
                         layer.Background, 
@@ -399,23 +587,79 @@ func AddMaze( ecs *ecs.ECS,
                         "dot", 
                         view,
                     )
+                    */
+                    AddPower(ecs, curOffsetX, curOffsetY, view)
                 }
-                if pattern[r][c] == 3 {
-                    entity.AddSpriteObject(
+                if pattern[r][c] == 3 { // teleporter A
+                    teleportAOffsetX = curOffsetX
+                    teleportAOffsetY = curOffsetY
+                    /*
+                    AddTeleporter(
                         ecs, 
-                        layer.Background, 
                         curOffsetX, 
                         curOffsetY, 
-                        "Items", 
-                        "teleporter", 
                         view,
                     )
+                    */
+                }
+                if pattern[r][c] == 5 { // teleporter B
+                    teleportBOffsetX = curOffsetX
+                    teleportBOffsetY = curOffsetY
+                    /*
+                    AddTeleporter(
+                        ecs, 
+                        curOffsetX, 
+                        curOffsetY, 
+                        view,
+                    )
+                    */
+                }
+                if pattern[r][c] == 6 { // Allow tp
+                    AddActionTrigger(
+                        ecs, 
+                        curOffsetX, 
+                        curOffsetY, 
+                        component.ReadyTeleport_actionid, 
+                        view,
+                    )
+                }
+                if pattern[r][c] == 7 { // ghost
+                    this.SpawnR = r
+                    this.SpawnC = c
+                    /*
+                    AddGhost(
+                        this.ecs, 
+                        curOffsetX, 
+                        curOffsetY, 
+                        view,
+                        this)
+                    */
                 }
             } 
             curOffsetX += sw
         }
         curOffsetY += sh
     }
+    AddTeleporter(
+        ecs, 
+        teleportAOffsetX, 
+        teleportAOffsetY, 
+        teleportBOffsetX, 
+        teleportBOffsetY, 
+        4.0,
+        0,
+        view,
+    )
+    AddTeleporter(
+        ecs, 
+        teleportBOffsetX, 
+        teleportBOffsetY, 
+        teleportAOffsetX, 
+        teleportAOffsetY, 
+        -4.0,
+        0,
+        view,
+    )
 
     //entity.AddSpriteObject(ecs, layer.Background, x, y, "Wall", "NES", view)
 

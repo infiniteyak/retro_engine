@@ -6,9 +6,10 @@ import (
 	"github.com/infiniteyak/retro_engine/engine/entity"
 	"github.com/infiniteyak/retro_engine/engine/event"
 	"github.com/infiniteyak/retro_engine/engine/utility"
-	"strings"
+	//"strings"
 	"github.com/yohamta/donburi"
 	"github.com/infiniteyak/retro_engine/games/shape_courier/entity"
+    "github.com/infiniteyak/retro_engine/engine/layer"
 )
 
 func (this *Game) LoadPlayingScene() {
@@ -18,7 +19,8 @@ func (this *Game) LoadPlayingScene() {
     //asset.PlayMusic("Music")
 
     // HUD
-    hudView := utility.NewView(0.0, 0.0, this.screenView.Area.Max.X, asset.FontHeight)
+    //hudView := utility.NewView(0.0, 0.0, this.screenView.Area.Max.X, asset.FontHeight)
+    hudView := utility.NewView(0.0, 1.0, this.screenView.Area.Max.X, asset.FontHeight + 1)
 
     entity.AddBlackBar(
         this.ecs, 
@@ -69,7 +71,7 @@ func (this *Game) LoadPlayingScene() {
     )
     waveText.YAlign = entity.Top_fontaligny
 
-    // Create ships text (lives)
+    /*
     shipsText := entity.AddNormalText(
         this.ecs, 
         float64(hudView.Area.Max.X), 
@@ -80,6 +82,40 @@ func (this *Game) LoadPlayingScene() {
     )
     shipsText.XAlign = entity.Right_fontalignx
     shipsText.YAlign = entity.Top_fontaligny
+    */
+    livesObjects := make([]*donburi.Entity, this.curLives)
+    adjustLives := func(w donburi.World, e event.AdjustLives) {
+        this.curLives += e.Value
+        if this.curLives < 0 {
+            //TODO handle this
+            println("game over")
+            return
+        }
+        for i := 0; i < len(livesObjects); i++ {
+            ree := event.RemoveEntity{Entity:livesObjects[i]}
+            event.RemoveEntityEvent.Publish(this.ecs.World, ree)
+        }
+        livesXVal := float64(hudView.Area.Max.X) - 4.0
+        for i := 0; i < this.curLives; i++ {
+            livesObjects = append(livesObjects, entity.AddSpriteObject(
+                this.ecs,
+                layer.HudForeground,
+                livesXVal,
+                float64(hudView.Area.Max.Y / 2), 
+                "Life",
+                "",
+                hudView,
+                ))
+            livesXVal -= 10
+        }
+    }
+    event.AdjustLivesEvent.Subscribe(this.ecs.World, adjustLives)
+    event.AdjustLivesEvent.Publish(
+        this.ecs.World, 
+        event.AdjustLives{
+            Value: 0,
+        },
+    )
     
     gameView := utility.NewView(
         0.0, 
@@ -88,16 +124,44 @@ func (this *Game) LoadPlayingScene() {
         this.screenView.Area.Max.Y - hudView.Area.Max.Y,
     )
 
-    md := shape_courier_entity.AddMaze(
+    mazeData := shape_courier_entity.AddMaze(
         this.ecs, 
         float64(gameView.Area.Max.X / 2), 
         float64(gameView.Area.Max.Y / 2), 
         gameView)
 
-    shape_courier_entity.AddSpaceMandy(
+    mandyData := shape_courier_entity.AddSpaceMandy(
         this.ecs, 
-        //float64(gameView.Area.Max.X / 2), 
-        //float64(gameView.Area.Max.Y / 2)-1, 
         gameView,
-        md)
+        mazeData)
+
+    shape_courier_entity.AddGhost(
+        this.ecs, 
+        gameView,
+        mandyData,
+        mazeData,
+        shape_courier_entity.ClassicRed_ghostvarient,
+        nil)
+    redGhost := shape_courier_entity.AddGhost(
+        this.ecs, 
+        gameView,
+        mandyData,
+        mazeData,
+        shape_courier_entity.ClassicPink_ghostvarient,
+        nil)
+    shape_courier_entity.AddGhost(
+        this.ecs, 
+        gameView,
+        mandyData,
+        mazeData,
+        shape_courier_entity.ClassicBlue_ghostvarient,
+        redGhost)
+    shape_courier_entity.AddGhost(
+        this.ecs, 
+        gameView,
+        mandyData,
+        mazeData,
+        shape_courier_entity.ClassicOrange_ghostvarient,
+        nil)
+    shape_courier_entity.AddGhostController(this.ecs)
 }

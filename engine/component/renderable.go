@@ -107,6 +107,13 @@ type SpriteData struct {
     mask *image.Rectangle
 }
 
+func NewSpriteData(name string, mask *image.Rectangle, tag string) SpriteData {
+    sd := SpriteData{}
+    sd.Load(name, mask)
+    sd.Play(tag)
+    return sd
+}
+
 func (this *SpriteData) Init() {
     this.baseInit()
     this.file = nil

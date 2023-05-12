@@ -294,6 +294,70 @@
     "spriteSourceSize": { "x": 0, "y": 0, "w": 16, "h": 16 },
     "sourceSize": { "w": 16, "h": 16 },
     "duration": 100
+   },
+   "space_mandy 37.aseprite": {
+    "frame": { "x": 592, "y": 0, "w": 16, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 16, "h": 16 },
+    "sourceSize": { "w": 16, "h": 16 },
+    "duration": 400
+   },
+   "space_mandy 38.aseprite": {
+    "frame": { "x": 608, "y": 0, "w": 16, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 16, "h": 16 },
+    "sourceSize": { "w": 16, "h": 16 },
+    "duration": 200
+   },
+   "space_mandy 39.aseprite": {
+    "frame": { "x": 624, "y": 0, "w": 16, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 16, "h": 16 },
+    "sourceSize": { "w": 16, "h": 16 },
+    "duration": 200
+   },
+   "space_mandy 40.aseprite": {
+    "frame": { "x": 640, "y": 0, "w": 16, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 16, "h": 16 },
+    "sourceSize": { "w": 16, "h": 16 },
+    "duration": 400
+   },
+   "space_mandy 41.aseprite": {
+    "frame": { "x": 656, "y": 0, "w": 16, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 16, "h": 16 },
+    "sourceSize": { "w": 16, "h": 16 },
+    "duration": 700
+   },
+   "space_mandy 42.aseprite": {
+    "frame": { "x": 672, "y": 0, "w": 16, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 16, "h": 16 },
+    "sourceSize": { "w": 16, "h": 16 },
+    "duration": 200
+   },
+   "space_mandy 43.aseprite": {
+    "frame": { "x": 688, "y": 0, "w": 16, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 16, "h": 16 },
+    "sourceSize": { "w": 16, "h": 16 },
+    "duration": 100
+   },
+   "space_mandy 44.aseprite": {
+    "frame": { "x": 704, "y": 0, "w": 16, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 16, "h": 16 },
+    "sourceSize": { "w": 16, "h": 16 },
+    "duration": 200
    }
  },
  "meta": {
@@ -301,7 +365,7 @@
   "version": "1.2.40-x64",
   "image": "space_mandy.png",
   "format": "I8",
-  "size": { "w": 592, "h": 16 },
+  "size": { "w": 720, "h": 16 },
   "scale": "1",
   "frameTags": [
    { "name": "move_left", "from": 0, "to": 3, "direction": "forward" },
@@ -313,7 +377,9 @@
    { "name": "move_down", "from": 15, "to": 18, "direction": "forward" },
    { "name": "stand_down", "from": 19, "to": 19, "direction": "forward" },
    { "name": "teleport_out", "from": 20, "to": 28, "direction": "forward" },
-   { "name": "teleport_in", "from": 29, "to": 36, "direction": "forward" }
+   { "name": "teleport_in", "from": 29, "to": 36, "direction": "forward" },
+   { "name": "death", "from": 37, "to": 44, "direction": "forward" },
+   { "name": "dead", "from": 44, "to": 44, "direction": "forward" }
   ],
   "layers": [
    { "name": "Layer 3", "opacity": 255, "blendMode": "normal" },

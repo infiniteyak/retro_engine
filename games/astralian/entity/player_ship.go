@@ -34,8 +34,7 @@ func AddPlayerShip( ecs *ecs.ECS,
     entry := ecs.World.Entry(entity)
 
     // Damage
-    dD := component.NewDamageData()
-    *dD.Value = 1.0
+    dD := component.NewDamageData(1.0)
     donburi.SetValue(entry, component.Damage, dD)
 
     // Factions

@@ -149,9 +149,8 @@ func AddBoomerang( ecs *ecs.ECS,
     donburi.SetValue(entry, component.Actions, ad)
 
     // Damage
-    dd := component.NewDamageData()
-    *dd.Value = 1.0
-    *dd.DestroyOnDamage = false
+    dd := component.NewDamageData(1.0)
+    //*dd.DestroyOnDamage = false
     dd.OnDamage = func() {
         ad.TriggerMap[component.ReturnProjectile_actionid] = true
         vd.Velocity.X = 0

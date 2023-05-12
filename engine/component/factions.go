@@ -26,3 +26,15 @@ func (this *FactionsData) HasFaction(faction FactionId) bool {
     }
     return false
 }
+
+func NewFactionsData() FactionsData {
+    return FactionsData {
+        Values: []FactionId{},
+    }
+}
+
+func NewSingleFaction(f FactionId) FactionsData {
+    fd := NewFactionsData()
+    fd.Values = append(fd.Values, f)
+    return fd
+}

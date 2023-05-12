@@ -17,11 +17,11 @@ import (
 )
 
 const (
-    dotPointValue = 10
-    dotHealth = 1.0
+    powerPointValue = 50
+    powerHealth = 1.0
 )
 
-type dotData struct {
+type powerData struct {
     ecs *ecs.ECS
     entry *donburi.Entry
     entity *donburi.Entity
@@ -32,9 +32,9 @@ type dotData struct {
     graphicObject component.GraphicObjectData
 }
 
-func AddDot( ecs *ecs.ECS,
-             x, y float64,
-             view *utility.View) {
+func AddPower( ecs *ecs.ECS,
+               x, y float64,
+               view *utility.View) {
     this := &dotData{}
     this.ecs = ecs
 
@@ -65,7 +65,7 @@ func AddDot( ecs *ecs.ECS,
     this.graphicObject = component.NewGraphicObjectData()
     spriteData := component.SpriteData{}
     spriteData.Load("Items", nil)
-    spriteData.Play("basic_dot")
+    spriteData.Play("dot")
     this.graphicObject.Renderables = append(this.graphicObject.Renderables, &spriteData)
     donburi.SetValue(this.entry, component.GraphicObject, this.graphicObject)
 
@@ -73,8 +73,11 @@ func AddDot( ecs *ecs.ECS,
     this.actions = component.NewActions()
     this.actions.AddNormalAction(component.Destroy_actionid, func() {
         this.graphicObject.HideAllRenderables(true)
-        se := event.Score{Value:dotPointValue}
+        se := event.Score{Value:powerPointValue}
         event.ScoreEvent.Publish(this.ecs.World, se)
+
+        runEvent := event.RunMode{}
+        event.SetRunModeEvent.Publish(this.ecs.World, runEvent)
 
         ree := event.RemoveEntity{Entity:this.entity}
         event.RemoveEntityEvent.Publish(this.ecs.World, ree)

@@ -18,6 +18,7 @@ import (
     space_mandy "github.com/infiniteyak/retro_engine/games/shape_courier/asset/space_mandy"
     items "github.com/infiniteyak/retro_engine/games/shape_courier/asset/items"
     ghost "github.com/infiniteyak/retro_engine/games/shape_courier/asset/ghost"
+    life "github.com/infiniteyak/retro_engine/games/shape_courier/asset/life"
 )
 
 func InitAssets() {
@@ -49,4 +50,6 @@ func InitSpriteAssets() {
     asset.LoadSpriteAsset("SpaceMandy", space_mandy.Json, space_mandy.Png)
     asset.LoadSpriteAsset("Items", items.Json, items.Png)
     asset.LoadSpriteAsset("Ghost", ghost.Json, ghost.Png)
+    asset.LoadSpriteAsset("Life", life.Json, life.Png)
+    //asset.SwapColor("Ghost")
 }

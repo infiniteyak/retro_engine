@@ -36,11 +36,13 @@ func InitShaders(w, h float64) {
     }
     Shaders["passthrough"] = s
 
+    /*
     s, err = ebiten.NewShader(paletteswap_go)
     if err != nil {
         panic(err)
     }
     Shaders["paletteSwap"] = s
+    */
 
     // Init image 0 and 1
     Image0 = ebiten.NewImage(ImageWidth, ImageHeight)

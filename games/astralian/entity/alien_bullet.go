@@ -122,8 +122,7 @@ func AddAlienBullet( ecs *ecs.ECS,
     donburi.SetValue(abd.entry, component.Actions, abd.actions)
 
     // Damage
-    abd.damage = component.NewDamageData()
-    *abd.damage.Value = AlienBulletDamage
+    abd.damage = component.NewDamageData(AlienBulletDamage)
     *abd.damage.DestroyOnDamage = true
     donburi.SetValue(abd.entry, component.Damage, abd.damage)
 

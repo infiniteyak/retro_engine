@@ -54,6 +54,42 @@ const (
 var MusicVolume float64
 var SFXVolume float64
 
+// TODO move to utilities?
+func isColorMatch(a color.Color, b color.Color) bool {
+    aR, aG, aB, aA := a.RGBA()
+    bR, bG, bB, bA := b.RGBA()
+    if aR == bR &&
+       aG == bG &&
+       aB == bB &&
+       aA == bA {
+        return true
+    }
+    return false
+}
+
+//For some reason can't be run immediately?
+func SwapColor(name string, oldColor color.Color, newColor color.Color) {
+    maxX := SpriteAssets[name].Image.Bounds().Max.X
+    maxY := SpriteAssets[name].Image.Bounds().Max.Y
+
+    for x := SpriteAssets[name].Image.Bounds().Min.X; x < maxX; x++ {
+        for y := SpriteAssets[name].Image.Bounds().Min.Y; y < maxY; y++ {
+            if isColorMatch(SpriteAssets[name].Image.At(x , y), oldColor) {
+                SpriteAssets[name].Image.Set(x , y, newColor)
+            }
+        }
+    }
+}
+
+func DuplicateSpriteAsset(oldName string, newName string) {
+    SpriteAssets[newName] = SpriteAsset{
+        JsonBytes: SpriteAssets[oldName].JsonBytes, 
+        ImageBytes: SpriteAssets[oldName].ImageBytes,
+        File: SpriteAssets[oldName].File,
+        Image: ebiten.NewImageFromImage(SpriteAssets[oldName].Image),
+    }
+}
+
 func LoadSpriteAsset(name string, json, png []byte) {
     img, _, err := image.Decode(bytes.NewReader(png)) 
     if err != nil {

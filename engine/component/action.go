@@ -36,6 +36,8 @@ const (
     IncreasePower_actionid
     ResetPower_actionid
     Follow_actionid
+    Teleport_actionid
+    ReadyTeleport_actionid
 )
 
 type ActionTypeId int

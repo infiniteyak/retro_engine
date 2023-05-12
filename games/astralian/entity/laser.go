@@ -86,8 +86,7 @@ func AddLaser( ecs *ecs.ECS,
     donburi.SetValue(entry, component.Actions, ad)
 
     // Damage
-    dd := component.NewDamageData()
-    *dd.Value = 1.0
+    dd := component.NewDamageData(1.0)
     *dd.DestroyOnDamage = true
     donburi.SetValue(entry, component.Damage, dd)
 

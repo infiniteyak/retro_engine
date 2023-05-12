@@ -13,6 +13,7 @@ type Hitbox struct {
 type ColliderData struct {
     Hitboxes []*Hitbox
     Collisions []*donburi.Entry
+    Enable *bool
 }
 
 var Collider = donburi.NewComponentType[ColliderData]()
@@ -20,9 +21,23 @@ var Collider = donburi.NewComponentType[ColliderData]()
 func NewColliderData() ColliderData {
     hbs := []*Hitbox{}
     cols := []*donburi.Entry{}
+    enable := true
     return ColliderData{
         Hitboxes: hbs,
         Collisions: cols,
+        Enable: &enable,
+    }
+}
+
+func NewSingleHBCollider(radius int, x, y float64) ColliderData {
+    hbs := []*Hitbox{}
+    hbs = append(hbs, NewHitbox(radius, x, y))
+    cols := []*donburi.Entry{}
+    enable := true
+    return ColliderData{
+        Hitboxes: hbs,
+        Collisions: cols,
+        Enable: &enable,
     }
 }
 
