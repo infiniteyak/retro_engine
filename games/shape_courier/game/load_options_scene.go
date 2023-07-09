@@ -12,7 +12,8 @@ func (this *Game) LoadOptionsScene() {
     menuFormat := entity.OptionMenuFormat{
         YAlign: entity.Middle_fontaligny,
         XAlign: entity.Inner_optionalignx,
-        Font: "WhiteFont",
+        ItemFont: "WhiteFont",
+        SelectFont: "WhiteFont",
         Kerning: 0,
         Spacing: 10,
         SelectPad: 2,
@@ -27,6 +28,7 @@ func (this *Game) LoadOptionsScene() {
     menuDisplay := []string{
         "SFX Vol",
         "Music Vol",
+        "Lives",
         "Back",
     }
 
@@ -49,6 +51,20 @@ func (this *Game) LoadOptionsScene() {
                                            int(asset.GetMusicVolume()*10.0), 
                                            setMusicVol,
                                            this.screenView,
+            ),
+        "Lives": entity.AddNumberOption(this.ecs, 
+                                        menuFormat, 
+                                        float64(Options.StartingLives), 
+                                        1.0, 
+                                        10.0, 
+                                        1.0, 
+                                        1.0, 
+                                        2,
+                                        func(f float64){
+                                            Options.StartingLives = int(f)
+                                            this.ResetScore()
+                                        },
+                                        this.screenView,
             ),
         "Back": entity.AddButtonOption(this.ecs, 
                                        menuFormat, 

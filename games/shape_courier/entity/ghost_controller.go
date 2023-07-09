@@ -19,6 +19,21 @@ const (
     chaseTime = 2000
 )
 
+var scatterTimes = []([]int){
+    {840, 840, 600},
+    {840, 840, 600},
+    {840, 840, 600},
+    {840, 840, 600},
+    {600, 600, 600},
+}
+var chaseTimes = []([]int){
+    {2400, 2400, 2400},
+    {2400, 2400, 120000},
+    {2400, 2400, 120000},
+    {2400, 2400, 120000},
+    {2400, 2400, 120000},
+}
+
 type ghostControllerData struct {
     ecs *ecs.ECS
     entry *donburi.Entry
@@ -26,9 +41,10 @@ type ghostControllerData struct {
     actions component.ActionsData
     curTime int
     curMode AiMode
+    ghostSpawnTimerMap map[GhostVarient]int
 }
 
-func AddGhostController(ecs *ecs.ECS) {
+func AddGhostController(ecs *ecs.ECS, wave int, spawnGhost func(GhostVarient) *GhostData) {
     this := &ghostControllerData{}
     this.ecs = ecs
 
@@ -42,20 +58,83 @@ func AddGhostController(ecs *ecs.ECS) {
 
     this.curMode = Scatter_aimode //Start in scatter
 
+
+    despawn := func(w donburi.World, event event.DespawnAllEnemies) {
+        this.ghostSpawnTimerMap = make(map[GhostVarient]int)
+        //this.actions.TriggerMap[component.DestroySilent_actionid] = true
+    }
+    event.DespawnAllEnemiesEvent.Subscribe(this.ecs.World, despawn)
+    event.RegisterCleanupFuncEvent.Publish(
+        this.ecs.World, 
+        event.RegisterCleanupFunc{
+            Function: func() {
+                event.DespawnAllEnemiesEvent.Unsubscribe(this.ecs.World, despawn)
+            },
+        },
+    )
+
+    respawn := func(w donburi.World, event event.RespawnEnemies) {
+        this.curTime = 0
+        this.ghostSpawnTimerMap = make(map[GhostVarient]int)
+        this.ghostSpawnTimerMap[ClassicRed_ghostvarient] = ghostColorDelayMap[ClassicRed_ghostvarient]
+        this.ghostSpawnTimerMap[ClassicPink_ghostvarient] = ghostColorDelayMap[ClassicPink_ghostvarient]
+        this.ghostSpawnTimerMap[ClassicBlue_ghostvarient] = ghostColorDelayMap[ClassicBlue_ghostvarient]
+        this.ghostSpawnTimerMap[ClassicOrange_ghostvarient] = ghostColorDelayMap[ClassicOrange_ghostvarient]
+    }
+    event.RespawnEnemiesEvent.Subscribe(this.ecs.World, respawn)
+    event.RegisterCleanupFuncEvent.Publish(
+        this.ecs.World, 
+        event.RegisterCleanupFunc{
+            Function: func() {
+                event.RespawnEnemiesEvent.Unsubscribe(this.ecs.World, respawn)
+            },
+        },
+    )
+
+    if wave > len(scatterTimes) {
+        println("MAX WAVE")
+        wave = len(scatterTimes) - 1
+    } else {
+        wave--
+    }
+    round := 0
+
+    println("starting in scatter")
+    println(wave)
+    println(round)
+    println(scatterTimes[wave][round])
+
     // Actions
     this.actions = component.NewActions()
     this.actions.AddUpkeepAction(func(){
         this.curTime++
-        if this.curMode == Scatter_aimode && this.curTime >= scatterTime {
+
+        for k, v := range this.ghostSpawnTimerMap {
+            if v >= 0 {
+                this.ghostSpawnTimerMap[k]-- //TODO does that work?
+            }
+            if v == 0 {
+                spawnGhost(k)
+            }
+        }
+
+        if this.curMode == Scatter_aimode && this.curTime >= scatterTimes[wave][round] {
             this.curTime = 0
             this.curMode = Chase_aimode
             event.SetAiModeEvent.Publish(this.ecs.World, event.AiMode{Value:int(Chase_aimode)})
             println("controller switch to chase")
-        } else if this.curMode == Chase_aimode && this.curTime >= chaseTime {
+            println(wave)
+            println(round)
+            println(chaseTimes[wave][round])
+        } else if this.curMode == Chase_aimode && this.curTime >= chaseTimes[wave][round] {
             this.curTime = 0
             this.curMode = Scatter_aimode
             event.SetAiModeEvent.Publish(this.ecs.World, event.AiMode{Value:int(Scatter_aimode)})
+            round = (round + 1) % len(scatterTimes[wave])
             println("controller switch to scatter")
+            println(wave)
+            println(round)
+            println(scatterTimes[wave][round])
         }
     })
 

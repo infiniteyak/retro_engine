@@ -56,5 +56,14 @@ var SetRunModeEvent = events.NewEventType[RunMode]()
 type DespawnAllEnemies struct { }
 var DespawnAllEnemiesEvent = events.NewEventType[DespawnAllEnemies]()
 
+type RespawnEnemies struct { }
+var RespawnEnemiesEvent = events.NewEventType[RespawnEnemies]()
+
 type AdjustLives struct {Value int}
 var AdjustLivesEvent = events.NewEventType[AdjustLives]()
+
+type AdjustDots struct {Value int}
+var AdjustDotsEvent = events.NewEventType[AdjustDots]()
+
+type ElroyMode struct {}
+var ElroyModeEvent = events.NewEventType[ElroyMode]()

@@ -22,6 +22,16 @@ const (
     StartingWave int = 1
 )
 
+type GameOptions struct {
+    StartingWave int
+    StartingLives int
+}
+
+var Options GameOptions = GameOptions{
+    StartingWave: StartingWave,
+    StartingLives: StartingLives,
+}
+
 type Game struct {
     screenView *utility.View //view equiv of the full screen
     curScene *scene.Scene
@@ -35,8 +45,8 @@ type Game struct {
 
 func (this *Game) ResetScore() {
     this.curScore = utility.ScoreEntry{}
-    this.curWave = StartingWave
-    this.curLives = StartingLives
+    this.curWave = Options.StartingWave
+    this.curLives = Options.StartingLives
 }
 
 func NewGame(width, height float64) *Game {

@@ -76,6 +76,9 @@ func AddDot( ecs *ecs.ECS,
         se := event.Score{Value:dotPointValue}
         event.ScoreEvent.Publish(this.ecs.World, se)
 
+        ad := event.AdjustDots{Value:-1}
+        event.AdjustDotsEvent.Publish(this.ecs.World, ad)
+
         ree := event.RemoveEntity{Entity:this.entity}
         event.RemoveEntityEvent.Publish(this.ecs.World, ree)
     })
@@ -93,4 +96,8 @@ func AddDot( ecs *ecs.ECS,
 
     // View
     donburi.SetValue(this.entry, component.View, component.ViewData{View:view})
+
+    ad := event.AdjustDots{Value:1}
+    event.AdjustDotsEvent.Publish(this.ecs.World, ad)
 }
+

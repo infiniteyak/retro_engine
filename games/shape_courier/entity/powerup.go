@@ -79,6 +79,9 @@ func AddPower( ecs *ecs.ECS,
         runEvent := event.RunMode{}
         event.SetRunModeEvent.Publish(this.ecs.World, runEvent)
 
+        ad := event.AdjustDots{Value:-1}
+        event.AdjustDotsEvent.Publish(this.ecs.World, ad)
+
         ree := event.RemoveEntity{Entity:this.entity}
         event.RemoveEntityEvent.Publish(this.ecs.World, ree)
     })
@@ -96,4 +99,7 @@ func AddPower( ecs *ecs.ECS,
 
     // View
     donburi.SetValue(this.entry, component.View, component.ViewData{View:view})
+
+    ad := event.AdjustDots{Value:1}
+    event.AdjustDotsEvent.Publish(this.ecs.World, ad)
 }

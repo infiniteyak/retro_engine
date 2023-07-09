@@ -12,6 +12,30 @@ import (
     "github.com/infiniteyak/retro_engine/engine/layer"
 )
 
+var elroyModeThreshold = []int{ // and half this for elroy 2 mode
+    20,
+    30,
+    40,
+    40,
+    40,
+    50,
+    50,
+    50,
+    60,
+    60,
+    60,
+    80,
+    80,
+    80,
+    100,
+    100,
+    100,
+    100,
+    120,
+    120,
+    120,
+}
+
 func (this *Game) LoadPlayingScene() {
     println("LoadPlayingScene")
     this.curScene.SetId(Playing_sceneId)
@@ -83,12 +107,34 @@ func (this *Game) LoadPlayingScene() {
     shipsText.XAlign = entity.Right_fontalignx
     shipsText.YAlign = entity.Top_fontaligny
     */
+    gameView := utility.NewView(
+        0.0, 
+        hudView.Area.Max.Y,
+        this.screenView.Area.Max.X, 
+        this.screenView.Area.Max.Y - hudView.Area.Max.Y,
+    )
+
+    spawnPlayer := func() {panic("Tried to spawn player too early")}
     livesObjects := make([]*donburi.Entity, this.curLives)
     adjustLives := func(w donburi.World, e event.AdjustLives) {
         this.curLives += e.Value
         if this.curLives < 0 {
-            //TODO handle this
-            println("game over")
+            gameOverText := entity.AddTitleText(
+                this.ecs, 
+                float64(gameView.Area.Max.X / 2), 
+                float64(gameView.Area.Max.Y / 2) - 13.0, 
+                gameView,
+                "GAME OVER", //TODO adjust font
+            )
+            gameOverText.XAlign = entity.Center_fontalignx
+            gameOverText.YAlign = entity.Middle_fontaligny
+            gameOverText.Blink = true
+            entity.AddTimer(this.ecs, 1000, func(){
+                gameOverText.Blink = false
+                ree := event.RemoveEntity{Entity:gameOverText.Entity}
+                event.RemoveEntityEvent.Publish(this.ecs.World, ree)
+                this.Transition(GameOver_sceneEvent)
+            })
             return
         }
         for i := 0; i < len(livesObjects); i++ {
@@ -108,20 +154,42 @@ func (this *Game) LoadPlayingScene() {
                 ))
             livesXVal -= 10
         }
+        spawnPlayer()
     }
     event.AdjustLivesEvent.Subscribe(this.ecs.World, adjustLives)
-    event.AdjustLivesEvent.Publish(
+    event.RegisterCleanupFuncEvent.Publish(
         this.ecs.World, 
-        event.AdjustLives{
-            Value: 0,
+        event.RegisterCleanupFunc{
+            Function: func() {
+                event.AdjustLivesEvent.Unsubscribe(this.ecs.World, adjustLives)
+            },
         },
     )
     
-    gameView := utility.NewView(
-        0.0, 
-        hudView.Area.Max.Y,
-        this.screenView.Area.Max.X, 
-        this.screenView.Area.Max.Y - hudView.Area.Max.Y,
+    dots := 0
+    adjustDots := func(w donburi.World, e event.AdjustDots) {
+        dots += e.Value
+        if e.Value > 0 {
+            return
+        }
+        if dots == 0 {
+            this.curWave++
+            this.Transition(ScreenClear_sceneEvent)
+        } else if this.curWave >= len(elroyModeThreshold) && dots <= elroyModeThreshold[len(elroyModeThreshold)-1] {
+            // TODO test this
+            event.ElroyModeEvent.Publish(this.ecs.World, event.ElroyMode{})
+        } else if dots <= elroyModeThreshold[this.curWave-1] {
+            event.ElroyModeEvent.Publish(this.ecs.World, event.ElroyMode{})
+        }
+    }
+    event.AdjustDotsEvent.Subscribe(this.ecs.World, adjustDots)
+    event.RegisterCleanupFuncEvent.Publish(
+        this.ecs.World, 
+        event.RegisterCleanupFunc{
+            Function: func() {
+                event.AdjustDotsEvent.Unsubscribe(this.ecs.World, adjustDots)
+            },
+        },
     )
 
     mazeData := shape_courier_entity.AddMaze(
@@ -130,38 +198,56 @@ func (this *Game) LoadPlayingScene() {
         float64(gameView.Area.Max.Y / 2), 
         gameView)
 
-    mandyData := shape_courier_entity.AddSpaceMandy(
-        this.ecs, 
-        gameView,
-        mazeData)
+    var mandyData *shape_courier_entity.MandyData = nil
+    var redGhostData *shape_courier_entity.GhostData = nil
+    spawnGhost := func(varient shape_courier_entity.GhostVarient) *shape_courier_entity.GhostData {
+        if redGhostData == nil && varient == shape_courier_entity.ClassicBlue_ghostvarient {
+            panic("Must initialize red ghost before blue ghost!")
+        }
+        gd := shape_courier_entity.AddGhost(
+            this.ecs, 
+            gameView,
+            mandyData,
+            mazeData,
+            varient,
+            redGhostData,
+            this.curWave)
+        if varient == shape_courier_entity.ClassicRed_ghostvarient {
+            redGhostData = gd
+        }
+        return gd
+    }
+    shape_courier_entity.AddGhostController(this.ecs, this.curWave, spawnGhost)
 
-    shape_courier_entity.AddGhost(
-        this.ecs, 
-        gameView,
-        mandyData,
-        mazeData,
-        shape_courier_entity.ClassicRed_ghostvarient,
-        nil)
-    redGhost := shape_courier_entity.AddGhost(
-        this.ecs, 
-        gameView,
-        mandyData,
-        mazeData,
-        shape_courier_entity.ClassicPink_ghostvarient,
-        nil)
-    shape_courier_entity.AddGhost(
-        this.ecs, 
-        gameView,
-        mandyData,
-        mazeData,
-        shape_courier_entity.ClassicBlue_ghostvarient,
-        redGhost)
-    shape_courier_entity.AddGhost(
-        this.ecs, 
-        gameView,
-        mandyData,
-        mazeData,
-        shape_courier_entity.ClassicOrange_ghostvarient,
-        nil)
-    shape_courier_entity.AddGhostController(this.ecs)
+    spawnPlayer = func() {
+        println("Setting up spawnPlayer func")
+        readyText := entity.AddTitleText(
+            this.ecs, 
+            float64(gameView.Area.Max.X / 2), 
+            float64(gameView.Area.Max.Y / 2) - 13.0, 
+            gameView,
+            "READY", //TODO adjust font, add !
+        )
+        readyText.XAlign = entity.Center_fontalignx
+        readyText.YAlign = entity.Middle_fontaligny
+        readyText.Blink = true
+
+        entity.AddTimer(this.ecs, 200, func(){
+            readyText.Blink = false
+            ree := event.RemoveEntity{Entity:readyText.Entity}
+            event.RemoveEntityEvent.Publish(this.ecs.World, ree)
+            mandyData = shape_courier_entity.AddSpaceMandy(
+                this.ecs, 
+                gameView,
+                mazeData)
+            respEnemies := event.RespawnEnemies{}
+            event.RespawnEnemiesEvent.Publish(this.ecs.World, respEnemies)
+        })
+    }
+    event.AdjustLivesEvent.Publish(
+        this.ecs.World, 
+        event.AdjustLives{
+            Value: 0,
+        },
+    )
 }

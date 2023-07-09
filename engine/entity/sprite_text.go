@@ -37,6 +37,9 @@ type StringData struct {
     TweenDelay int
     XTween *gween.Tween
     YTween *gween.Tween
+    Entity *donburi.Entity
+    X float64
+    Y float64
 }
 
 func writeText(curString *StringData, gobj *component.GraphicObjectData, hide bool) {
@@ -89,6 +92,9 @@ func AddSpriteText(ecs *ecs.ECS, x, y float64, view *utility.View, layer ecs.Lay
 
     entry := ecs.World.Entry(entity)
 
+    str.X = x   
+    str.Y = y   
+
     curString := *str
 
     // Position
@@ -128,6 +134,8 @@ func AddSpriteText(ecs *ecs.ECS, x, y float64, view *utility.View, layer ecs.Lay
                     delayCounter = curString.Delay
                 }
                 writeText(&curString, g, (curString.TypeWriter != 0))
+                pd.Point.X = curString.X
+                pd.Point.Y = curString.Y
                 return
             }
             if curString.Blink {
@@ -186,7 +194,7 @@ func AddTitleText(ecs *ecs.ECS, x, y float64, view *utility.View, str string) *S
         Delay: 0,
     }
 
-    AddSpriteText(
+    entity := AddSpriteText(
         ecs, 
         x, 
         y,
@@ -194,6 +202,8 @@ func AddTitleText(ecs *ecs.ECS, x, y float64, view *utility.View, str string) *S
         layer.HudForeground,
         &text,
     )
+
+    text.Entity = entity
 
     return &text
 }

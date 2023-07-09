@@ -37,7 +37,7 @@ const (
     spaceMandySpriteDeathTag = "death"
     spaceMandySpriteDeadTag = "dead"
 
-    spaceMandyMoveSpeed = 0.6
+    spaceMandyMoveSpeed = 0.625
     //spaceMandyTeleportCd = 400
 )
 
@@ -89,6 +89,8 @@ func (this *MandyData) move(direction Direction) {
 func AddSpaceMandy( ecs *ecs.ECS,
               view *utility.View,
               md *MazeData) *MandyData {
+    println("ADDING PLAYER")
+
     this := &MandyData{}
     this.ecs = ecs
 
@@ -195,6 +197,9 @@ func AddSpaceMandy( ecs *ecs.ECS,
                     Value: -1,
                 },
             )
+
+            ree := event.RemoveEntity{Entity:this.entity}
+            event.RemoveEntityEvent.Publish(this.ecs.World, ree)
         })
     })
 

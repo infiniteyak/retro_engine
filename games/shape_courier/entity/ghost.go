@@ -43,9 +43,11 @@ const (
     ghostSpriteIdleDownTag = "down"
     ghostSpriteDeathTag = "death"
 
-    ghostMoveSpeed = 0.3
+    ghostMoveSpeed = 0.6
+    ghostMoveSpeedFrighten = 0.375
+    ghostMoveSpeedFast = 0.65
 
-    ghostFrightenTime = 600
+    ghostFrightenTime = 960
 )
 
 type AiMode int
@@ -64,7 +66,7 @@ const (
     ClassicOrange_ghostvarient 
 )
 
-type ghostData struct {
+type GhostData struct {
     ecs *ecs.ECS
     entry *donburi.Entry
     entity *donburi.Entity
@@ -93,6 +95,7 @@ type ghostData struct {
     scatterPoint utility.Point
     aiMode AiMode
     runMode bool
+    fastMode bool
     runTimer int
 }
 
@@ -125,13 +128,13 @@ var ghostColorNameMap = map[GhostVarient]string {
 }
 
 var ghostColorDelayMap = map[GhostVarient]int {
-    ClassicRed_ghostvarient: 50,
-    ClassicPink_ghostvarient: 200,
-    ClassicBlue_ghostvarient: 350,
-    ClassicOrange_ghostvarient: 500,
+    ClassicRed_ghostvarient: 25,
+    ClassicPink_ghostvarient: 100,//200,
+    ClassicBlue_ghostvarient: 175,//350,
+    ClassicOrange_ghostvarient: 250, //500,
 }
 
-func (this *ghostData) reverse() {
+func (this *GhostData) reverse() {
     switch this.dir {
     case North_direction:
         this.dir = South_direction
@@ -145,8 +148,14 @@ func (this *ghostData) reverse() {
     this.targetDir = this.dir
 }
 
-func (this *ghostData) move(direction Direction) {
-    *this.position.Point, direction = this.mazeData.ResolveMove(*this.position.Point, direction, ghostMoveSpeed)
+func (this *GhostData) move(direction Direction) {
+    speed := ghostMoveSpeed
+    if this.runMode {
+        speed = ghostMoveSpeedFrighten
+    } else if this.fastMode {
+        speed = ghostMoveSpeedFast
+    }
+    *this.position.Point, direction = this.mazeData.ResolveMove(*this.position.Point, direction, speed)
     if this.runMode {
         this.spriteData.Play("f_" + ghostDirMoveMap[direction])
     } else {
@@ -161,8 +170,9 @@ func AddGhost(ecs *ecs.ECS,
               mandyData *MandyData,
               mazeData *MazeData,
               ghostType GhostVarient,
-              redGhostData *ghostData) *ghostData{
-    this := &ghostData{}
+              redGhostData *GhostData,
+              wave int) *GhostData{
+    this := &GhostData{}
     this.ecs = ecs
 
     entity := this.ecs.Create(
@@ -405,24 +415,76 @@ func AddGhost(ecs *ecs.ECS,
     donburi.SetValue(this.entry, component.Actions, this.actions)
 
     changeAiMode := func(w donburi.World, event event.AiMode) {
+        if this.fastMode {
+            return
+        }
         this.aiMode = AiMode(event.Value)
         if !this.runMode {
             this.reverse()
         }
     }
     event.SetAiModeEvent.Subscribe(this.ecs.World, changeAiMode)
+    event.RegisterCleanupFuncEvent.Publish(
+        this.ecs.World, 
+        event.RegisterCleanupFunc{
+            Function: func() {
+                event.SetAiModeEvent.Unsubscribe(this.ecs.World, changeAiMode)
+            },
+        },
+    )
+
+    elroy := func(w donburi.World, event event.ElroyMode) {
+        if this.varient != ClassicRed_ghostvarient {
+            return
+        }
+        println("ELROY")
+        this.fastMode = true
+        this.aiMode = Chase_aimode 
+    }
+    event.ElroyModeEvent.Subscribe(this.ecs.World, elroy)
+    event.RegisterCleanupFuncEvent.Publish(
+        this.ecs.World, 
+        event.RegisterCleanupFunc{
+            Function: func() {
+                event.ElroyModeEvent.Unsubscribe(this.ecs.World, elroy)
+            },
+        },
+    )
 
     frighten := func(w donburi.World, event event.RunMode) {
-        this.runTimer = ghostFrightenTime
+        ft := ghostFrightenTime
+        if wave < 5 {
+            ft -= int(float64(ft) * 0.1 * float64(wave-1))
+        } else {
+            ft = ft/2
+        }
+        println("fright val ", ft)
+        this.runTimer = ft
         this.runMode = true
         this.reverse()
     }
     event.SetRunModeEvent.Subscribe(this.ecs.World, frighten)
+    event.RegisterCleanupFuncEvent.Publish(
+        this.ecs.World, 
+        event.RegisterCleanupFunc{
+            Function: func() {
+                event.SetRunModeEvent.Unsubscribe(this.ecs.World, frighten)
+            },
+        },
+    )
 
     despawn := func(w donburi.World, event event.DespawnAllEnemies) {
         this.actions.TriggerMap[component.DestroySilent_actionid] = true
     }
     event.DespawnAllEnemiesEvent.Subscribe(this.ecs.World, despawn)
+    event.RegisterCleanupFuncEvent.Publish(
+        this.ecs.World, 
+        event.RegisterCleanupFunc{
+            Function: func() {
+                event.DespawnAllEnemiesEvent.Unsubscribe(this.ecs.World, despawn)
+            },
+        },
+    )
  
     return this
 }

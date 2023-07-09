@@ -1,6 +1,8 @@
 package entity
 
 import (
+    "fmt"
+    "strconv"
     "github.com/infiniteyak/retro_engine/engine/utility"
     "github.com/infiniteyak/retro_engine/engine/layer"
     "github.com/infiniteyak/retro_engine/engine/component"
@@ -24,7 +26,8 @@ const (
 type OptionMenuFormat struct {
     XAlign OptionAlignX
     YAlign FontAlignY
-    Font string
+    ItemFont string
+    SelectFont string
     Kerning int
     Spacing int
     SelectPad int
@@ -45,6 +48,7 @@ const (
     Undefined_optiontype OptionType = iota
     Slider_optiontype
     Button_optiontype
+    Number_optiontype
 )
 
 type SliderOptionData struct {
@@ -64,6 +68,25 @@ type SliderOptionData struct {
 
     increments int //0 to 10, 0 is off
     setIncFunc func(int)
+}
+
+type NumberOptionData struct {
+    ecs *ecs.ECS
+    view *utility.View
+
+    x float64
+    y float64
+
+    value float64
+    increment float64 //how much to change by
+    valueAdjust float64 //multiply value for display purposes
+    setFunc func(float64)
+    numberStringData *StringData
+    numberFormatString string
+    displayDigits int
+    minValue float64 
+    maxValue float64 
+    font string
 }
 
 type ButtonOptionData struct {
@@ -158,7 +181,7 @@ func AddOptionMenu( ecs *ecs.ECS,
             XAlign: axt,
             YAlign: format.YAlign,
             Kerning: format.Kerning,
-            Font: format.Font,
+            Font: format.ItemFont,
         }
 
         textX := x - float64(format.Gap)
@@ -481,4 +504,109 @@ func (this *ButtonOptionData) Toggle() bool {
 
 func (this *ButtonOptionData) GetType() OptionType {
     return Button_optiontype
+}
+
+// Number
+//TODO standardize
+func AddNumberOption ( ecs *ecs.ECS, 
+                       format OptionMenuFormat, //TODO why do we want this? 
+                       initialValue float64, 
+                       minValue float64, 
+                       maxValue float64, 
+                       increment float64, 
+                       valueAdjust float64, 
+                       displayDigits int, 
+                       setFunc func(float64), 
+                       view *utility.View ) *NumberOptionData {
+    this := &NumberOptionData{}
+    this.ecs = ecs
+    this.view = view
+
+    this.value = initialValue 
+    this.increment = increment 
+    this.valueAdjust = valueAdjust 
+    this.setFunc = setFunc
+    //this.x = x
+    //this.y = y
+    this.minValue = minValue
+    this.maxValue = maxValue
+    this.displayDigits = displayDigits
+
+    this.numberFormatString = "%0" + strconv.Itoa(displayDigits) + "d"
+
+    this.numberStringData = AddNormalText(
+        this.ecs, 
+        this.x,
+        this.y,
+        view,
+        "WhiteFont",
+        fmt.Sprintf(this.numberFormatString, int(this.value * this.valueAdjust)),
+    )
+    this.numberStringData.XAlign = Left_fontalignx
+
+    return this
+}
+
+// TODO okay now that I think about it I should really redo this whole thing so that
+// you create a menu and then that menu has a function to add options, which then
+// inherit formatting instead of creating the options first.
+func NewNumberOptionData(format OptionMenuFormat) *NumberOptionData {
+    return &NumberOptionData {
+        font: format.SelectFont,
+    }
+}
+
+func (this *NumberOptionData) Init() *NumberOptionData {
+    this.numberFormatString = "%0" + strconv.Itoa(this.displayDigits) + "d"
+    this.numberStringData = AddNormalText(
+        this.ecs, 
+        this.x,
+        this.y,
+        this.view,
+        "WhiteFont",
+        fmt.Sprintf(this.numberFormatString, int(this.value * this.valueAdjust)),
+    )
+    this.numberStringData.XAlign = Left_fontalignx
+    return this
+}
+
+func (this *NumberOptionData) Increment() bool {
+    println("Increment")
+    if this.value < this.maxValue {
+        this.value += this.increment
+        this.numberStringData.String = fmt.Sprintf(this.numberFormatString, int(this.value * this.valueAdjust))
+        this.setFunc(this.value)
+    } else {
+        return false
+    }
+    return true
+}
+
+func (this *NumberOptionData) Decrement() bool {
+    println("Increment")
+    if this.value > this.minValue {
+        this.value -= this.increment
+        this.numberStringData.String = fmt.Sprintf(this.numberFormatString, int(this.value * this.valueAdjust))
+        this.setFunc(this.value)
+    } else {
+        return false
+    }
+    return true
+}
+
+func (this *NumberOptionData) Toggle() bool {
+    println("Toggle")
+    return false
+}
+
+func (this *NumberOptionData) GetType() OptionType {
+    return Number_optiontype
+}
+
+func (this *NumberOptionData) SetPosition(x, y float64) {
+    //this.x = x + 24
+    this.x = x
+    this.y = y
+    this.numberStringData.X = this.x
+    this.numberStringData.Y = this.y
 }
