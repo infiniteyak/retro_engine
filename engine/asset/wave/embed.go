@@ -4,7 +4,6 @@ import (
     _ "embed"
 )
 
-// Sprites
 var (
     //go:embed wave.wav
     Wav []byte

@@ -54,10 +54,12 @@ func InitShaders(w, h float64) {
 func RunNoShader(screen *ebiten.Image) {
     op := &ebiten.DrawImageOptions{}
     screen.DrawImage(Image0, op)
+
     /*
     msg := fmt.Sprintf("TPS: %0.2f\nFPS: %0.2f", ebiten.ActualTPS(), ebiten.ActualFPS())
 	ebitenutil.DebugPrint(screen, msg)
     */
+
 	Image0.Clear()
 }
 

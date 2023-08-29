@@ -30,7 +30,7 @@ func getScores(pInitials string, pScore int) ([]scoreEntryAPI, bool) {
         }
 
         _, err = http.Post(
-            "https://www.infiniteyak.com/api/collections/astralian_scores/records",
+            "https://www.infiniteyak.com/api/collections/shape_courier_scores/records",
             "application/json",
             bytes.NewBuffer(jsonData),
             )
@@ -40,7 +40,7 @@ func getScores(pInitials string, pScore int) ([]scoreEntryAPI, bool) {
         }
     }
 
-    response, err := http.Get("https://www.infiniteyak.com/api/collections/astralian_scores/records?sort=-score&perPage=15")
+    response, err := http.Get("https://www.infiniteyak.com/api/collections/shape_courier_scores/records?sort=-score&perPage=15")
     if err != nil {
         print(err)
         return nil, true

@@ -78,4 +78,7 @@ var FontMasks = map[string]image.Rectangle{
     "x": image.Rect(80,32,88,40),
     "y": image.Rect(88,32,96,40),
     "z": image.Rect(96,32,104,40),
+    "?": image.Rect(0,40,8,48),
+    ",": image.Rect(8,40,16,48),
+    "'": image.Rect(16,40,24,48),
 }

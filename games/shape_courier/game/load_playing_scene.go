@@ -6,7 +6,6 @@ import (
 	"github.com/infiniteyak/retro_engine/engine/entity"
 	"github.com/infiniteyak/retro_engine/engine/event"
 	"github.com/infiniteyak/retro_engine/engine/utility"
-	//"strings"
 	"github.com/yohamta/donburi"
 	"github.com/infiniteyak/retro_engine/games/shape_courier/entity"
     "github.com/infiniteyak/retro_engine/engine/layer"
@@ -43,7 +42,6 @@ func (this *Game) LoadPlayingScene() {
     //asset.PlayMusic("Music")
 
     // HUD
-    //hudView := utility.NewView(0.0, 0.0, this.screenView.Area.Max.X, asset.FontHeight)
     hudView := utility.NewView(0.0, 1.0, this.screenView.Area.Max.X, asset.FontHeight + 1)
 
     entity.AddBlackBar(
@@ -95,18 +93,6 @@ func (this *Game) LoadPlayingScene() {
     )
     waveText.YAlign = entity.Top_fontaligny
 
-    /*
-    shipsText := entity.AddNormalText(
-        this.ecs, 
-        float64(hudView.Area.Max.X), 
-        0,
-        hudView,
-        "WhiteFont",
-        strings.Repeat("^", this.curLives),
-    )
-    shipsText.XAlign = entity.Right_fontalignx
-    shipsText.YAlign = entity.Top_fontaligny
-    */
     gameView := utility.NewView(
         0.0, 
         hudView.Area.Max.Y,
@@ -129,7 +115,7 @@ func (this *Game) LoadPlayingScene() {
             gameOverText.XAlign = entity.Center_fontalignx
             gameOverText.YAlign = entity.Middle_fontaligny
             gameOverText.Blink = true
-            entity.AddTimer(this.ecs, 1000, func(){
+            entity.AddTimer(this.ecs, 500, func(){
                 gameOverText.Blink = false
                 ree := event.RemoveEntity{Entity:gameOverText.Entity}
                 event.RemoveEntityEvent.Publish(this.ecs.World, ree)
@@ -178,7 +164,7 @@ func (this *Game) LoadPlayingScene() {
         } else if this.curWave >= len(elroyModeThreshold) && dots <= elroyModeThreshold[len(elroyModeThreshold)-1] {
             // TODO test this
             event.ElroyModeEvent.Publish(this.ecs.World, event.ElroyMode{})
-        } else if dots <= elroyModeThreshold[this.curWave-1] {
+        } else if this.curWave < len(elroyModeThreshold) && dots <= elroyModeThreshold[this.curWave-1] {
             event.ElroyModeEvent.Publish(this.ecs.World, event.ElroyMode{})
         }
     }
@@ -219,8 +205,12 @@ func (this *Game) LoadPlayingScene() {
     }
     shape_courier_entity.AddGhostController(this.ecs, this.curWave, spawnGhost)
 
+    shape_courier_entity.AddTaco(
+        this.ecs, 
+        gameView,
+        mazeData)
+
     spawnPlayer = func() {
-        println("Setting up spawnPlayer func")
         readyText := entity.AddTitleText(
             this.ecs, 
             float64(gameView.Area.Max.X / 2), 
@@ -250,4 +240,7 @@ func (this *Game) LoadPlayingScene() {
             Value: 0,
         },
     )
+
+    //play the start noise
+    asset.PlaySound("StartNoise")
 }

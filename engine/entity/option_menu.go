@@ -22,11 +22,11 @@ const (
     Outer_optionalignx
 )
 
-//TODO combine with game menu?
+//TODO combine with game menu? or with optionMenuData?
 type OptionMenuFormat struct {
     XAlign OptionAlignX
     YAlign FontAlignY
-    ItemFont string
+    ItemFont string //TODO name?
     SelectFont string
     Kerning int
     Spacing int
@@ -108,217 +108,27 @@ type Option interface {
 }
 
 type optionMenuData struct {
-    rSelect map[string]*donburi.Entity
+    rSelect map[string]*donburi.Entity //each menu item has hidden sprites that are shown when selected
     lSelect map[string]*donburi.Entity
     selectIndex int
+    displayOrder []string
+    displayText map[string]*StringData
+    options map[string]Option
+    format OptionMenuFormat
+    menuNoise string
+    view *utility.View
+    x float64
+    y float64
+    title StringData 
+    ecs *ecs.ECS
 }
 
 func (this *optionMenuData) init() {
     this.rSelect = map[string]*donburi.Entity{}
     this.lSelect = map[string]*donburi.Entity{}
-}
-
-func AddOptionMenu( ecs *ecs.ECS, 
-                    x, y float64, 
-                    options map[string]Option,
-                    display []string,
-                    format OptionMenuFormat,
-                    menuNoise string,
-                    view *utility.View ) {
-    this := &optionMenuData{}
-    this.init()
-
-    var curY float64
-
-    displayHeight := float64(len(display) * asset.FontHeight + (len(display) - 1) * format.Spacing)
-    switch format.YAlign {
-    case Top_fontaligny:
-        curY = y
-    case Middle_fontaligny:
-        curY = y - displayHeight/2.0
-    case Bottom_fontaligny:
-        curY = y - displayHeight
-    }
-    if format.Title != "" {
-        displayHeight += asset.FontHeight + float64(format.Spacing) 
-        text := StringData{
-            String: format.Title,
-            XAlign: Center_fontalignx,
-            YAlign: format.YAlign,
-            Kerning: format.TitleKerning, //TODO separate for title?
-            Font: format.TitleFont,
-        }
-
-        AddSpriteText(
-            ecs, 
-            x, 
-            curY,
-            view,
-            layer.HudForeground,
-            &text,
-        )
-        curY += asset.FontHeight + float64(format.Spacing)
-    }
-
-
-    var axt FontAlignX
-    switch format.XAlign {
-    case Left_optionalignx:
-        axt = Left_fontalignx
-    case Right_optionalignx:
-        axt = Right_fontalignx
-    case Center_optionalignx:
-        axt = Center_fontalignx
-    case Inner_optionalignx:
-        axt = Right_fontalignx
-    case Outer_optionalignx:
-        axt = Left_fontalignx
-    }
-
-    for _, opt := range display {
-        text := StringData{
-            String: opt,
-            XAlign: axt,
-            YAlign: format.YAlign,
-            Kerning: format.Kerning,
-            Font: format.ItemFont,
-        }
-
-        textX := x - float64(format.Gap)
-
-        // In this case we want to center the button regardless
-        if options[opt].GetType() == Button_optiontype {
-            text.XAlign = Center_fontalignx   
-            textX = x
-        } 
-
-        AddSpriteText(
-            ecs, 
-            textX, 
-            curY,
-            view,
-            layer.HudForeground,
-            &text,
-        )
-
-        //TODO should the positioning account for the selector size?
-        displayLength := float64(len(opt) * asset.FontWidth + (len(opt) - 1) * format.Kerning)
-        var leftX, rightX float64
-        selWidth := float64(asset.SpriteAssets[format.SelectSprite].File.FrameWidth)
-        switch text.XAlign {
-        case Left_fontalignx:
-            leftX = textX - selWidth/2.0 - float64(format.Kerning) - float64(format.SelectPad)
-            rightX = textX + displayLength + selWidth/2.0 + float64(format.Kerning) + float64(format.SelectPad -1)
-        case Center_fontalignx:
-            leftX = textX - displayLength/2.0 - selWidth/2.0 - float64(format.Kerning) - float64(format.SelectPad)
-            rightX = textX + displayLength/2.0 + selWidth/2.0 + float64(format.Kerning) + float64(format.SelectPad -1)
-        case Right_fontalignx:
-            leftX = textX - displayLength - selWidth - float64(format.Kerning) - float64(format.SelectPad)
-            rightX = textX + float64(format.Kerning) + float64(format.SelectPad -1)
-        }
-
-        //TODO FIX
-        this.lSelect[opt] = AddSpriteObject(
-            ecs,
-            layer.HudForeground,
-            leftX,
-            curY,
-            format.SelectSprite,
-            "left",
-            view,
-        )
-        this.rSelect[opt] = AddSpriteObject(
-            ecs,
-            layer.HudForeground,
-            rightX,
-            curY,
-            format.SelectSprite,
-            "right",
-            view,
-        )
-
-        optionX := x + float64(format.Gap)
-        options[opt].SetPosition(optionX, curY - 1)
-
-        curY += asset.FontHeight + float64(format.Spacing)
-    }
-
-    moveSelect := func() {
-        for index, opt := range display {
-            rs := component.GraphicObject.Get(ecs.World.Entry(*this.rSelect[opt]))
-            ls := component.GraphicObject.Get(ecs.World.Entry(*this.lSelect[opt]))
-            *rs.TransInfo.Hide = !(index == this.selectIndex)
-            *ls.TransInfo.Hide = !(index == this.selectIndex)
-        }
-    }
-    moveSelect()
-
-    AddHybridInputTrigger(
-        ecs,
-        ebiten.KeyUp,
-        inputDelay,
-        inputFreq,
-        func() {
-            println("up")
-            oldIndex := this.selectIndex
-            this.selectIndex--
-            if this.selectIndex < 0 {
-                this.selectIndex = len(display)-1
-            }
-            if oldIndex != this.selectIndex {
-                asset.PlaySound(menuNoise)
-                moveSelect()
-            }
-        },
-    )
-    AddHybridInputTrigger(
-        ecs,
-        ebiten.KeyDown,
-        inputDelay,
-        inputFreq,
-        func() {
-            println("down")
-            oldIndex := this.selectIndex
-            this.selectIndex = (this.selectIndex + 1) % len(display)
-            if oldIndex != this.selectIndex {
-                asset.PlaySound(menuNoise)
-                moveSelect()
-            }
-        },
-    )
-    AddHybridInputTrigger(
-        ecs,
-        ebiten.KeySpace,
-        inputDelay,
-        inputFreq,
-        func() {
-            if options[display[this.selectIndex]].Toggle() {
-                asset.PlaySound(menuNoise)
-            }
-        },
-    )
-    AddHybridInputTrigger(
-        ecs,
-        ebiten.KeyRight,
-        inputDelay,
-        inputFreq,
-        func() {
-            if options[display[this.selectIndex]].Increment() {
-                asset.PlaySound(menuNoise)
-            }
-        },
-    )
-    AddHybridInputTrigger(
-        ecs,
-        ebiten.KeyLeft,
-        inputDelay,
-        inputFreq,
-        func() {
-            if options[display[this.selectIndex]].Decrement() {
-                asset.PlaySound(menuNoise)
-            }
-        },
-    )
+    this.displayOrder = []string{}
+    this.options = map[string]Option{} //TODO should this be a map of string to pointer?
+    this.displayText = map[string]*StringData{}
 }
 
 //TODO move to assets or something?
@@ -424,8 +234,6 @@ func (this *SliderOptionData) UpdateCursor() {
 }
 
 func (this *SliderOptionData) SetPosition(x, y float64) {
-    println("SetPosition")
-
     this.x = x
     this.y = y
 
@@ -438,7 +246,6 @@ func (this *SliderOptionData) SetPosition(x, y float64) {
 }
 
 func (this *SliderOptionData) Increment() bool {
-    println("Increment")
     if this.increments < MaxIncrement {
         this.increments++
         this.setIncFunc(this.increments)
@@ -450,7 +257,6 @@ func (this *SliderOptionData) Increment() bool {
 }
 
 func (this *SliderOptionData) Decrement() bool {
-    println("Decrement")
     if this.increments > MinIncrement {
         this.increments--
         this.setIncFunc(this.increments)
@@ -462,7 +268,6 @@ func (this *SliderOptionData) Decrement() bool {
 }
 
 func (this *SliderOptionData) Toggle() bool {
-    println("Toggle")
     return false
 }
 
@@ -485,7 +290,6 @@ func AddButtonOption ( ecs *ecs.ECS,
 }
 
 func (this *ButtonOptionData) SetPosition(x, y float64) {
-    println("SetPosition")
 }
 
 func (this *ButtonOptionData) Increment() bool {
@@ -497,7 +301,6 @@ func (this *ButtonOptionData) Decrement() bool {
 }
 
 func (this *ButtonOptionData) Toggle() bool {
-    println("Toggle")
     this.buttonFunction()
     return true
 }
@@ -571,31 +374,28 @@ func (this *NumberOptionData) Init() *NumberOptionData {
 }
 
 func (this *NumberOptionData) Increment() bool {
-    println("Increment")
-    if this.value < this.maxValue {
+    if this.value + this.increment < this.maxValue {
         this.value += this.increment
-        this.numberStringData.String = fmt.Sprintf(this.numberFormatString, int(this.value * this.valueAdjust))
-        this.setFunc(this.value)
     } else {
-        return false
+        this.value = this.minValue
     }
+    this.numberStringData.String = fmt.Sprintf(this.numberFormatString, int(this.value * this.valueAdjust))
+    this.setFunc(this.value)
     return true
 }
 
 func (this *NumberOptionData) Decrement() bool {
-    println("Increment")
-    if this.value > this.minValue {
+    if this.value - this.increment > this.minValue {
         this.value -= this.increment
-        this.numberStringData.String = fmt.Sprintf(this.numberFormatString, int(this.value * this.valueAdjust))
-        this.setFunc(this.value)
     } else {
-        return false
+        this.value = this.maxValue
     }
+    this.numberStringData.String = fmt.Sprintf(this.numberFormatString, int(this.value * this.valueAdjust))
+    this.setFunc(this.value)
     return true
 }
 
 func (this *NumberOptionData) Toggle() bool {
-    println("Toggle")
     return false
 }
 
@@ -609,4 +409,260 @@ func (this *NumberOptionData) SetPosition(x, y float64) {
     this.y = y
     this.numberStringData.X = this.x
     this.numberStringData.Y = this.y
+}
+
+func AddOptionMenu( ecs *ecs.ECS, 
+                    x, y float64, 
+                    format OptionMenuFormat,
+                    menuNoise string,
+                    view *utility.View ) *optionMenuData {
+    this := &optionMenuData{}
+    this.init()
+    this.format = format
+    this.menuNoise = menuNoise
+    this.view = view
+    this.x = x
+    this.y = y
+    this.ecs = ecs
+
+    //create a title object
+    if this.format.Title != "" {
+        var curY float64
+        switch this.format.YAlign {
+        case Top_fontaligny:
+            curY = this.y
+        case Middle_fontaligny:
+            curY = this.y - asset.FontHeight/2.0
+        case Bottom_fontaligny:
+            curY = this.y -asset.FontHeight 
+        }
+        this.title = StringData{
+            String: this.format.Title,
+            XAlign: Center_fontalignx,
+            YAlign: this.format.YAlign,
+            Kerning: this.format.TitleKerning,
+            Font: this.format.TitleFont,
+        }
+        AddSpriteText(
+            this.ecs, 
+            this.x, 
+            curY,
+            this.view,
+            layer.HudForeground,
+            &this.title,
+        )
+    }
+
+    moveSelect := func() {
+        for index, opt := range this.displayOrder {
+            rs := component.GraphicObject.Get(ecs.World.Entry(*this.rSelect[opt]))
+            ls := component.GraphicObject.Get(ecs.World.Entry(*this.lSelect[opt]))
+            *rs.TransInfo.Hide = !(index == this.selectIndex)
+            *ls.TransInfo.Hide = !(index == this.selectIndex)
+        }
+    }
+    //moveSelect() //TODO should this be here or no?
+
+    AddHybridInputTrigger(
+        this.ecs,
+        ebiten.KeyUp,
+        inputDelay,
+        inputFreq,
+        func() {
+            oldIndex := this.selectIndex
+            this.selectIndex--
+            if this.selectIndex < 0 {
+                this.selectIndex = len(this.displayOrder)-1
+            }
+            if oldIndex != this.selectIndex {
+                asset.PlaySound(menuNoise)
+                moveSelect()
+            }
+        },
+    )
+    AddHybridInputTrigger(
+        this.ecs,
+        ebiten.KeyDown,
+        inputDelay,
+        inputFreq,
+        func() {
+            oldIndex := this.selectIndex
+            this.selectIndex = (this.selectIndex + 1) % len(this.displayOrder)
+            if oldIndex != this.selectIndex {
+                asset.PlaySound(menuNoise)
+                moveSelect()
+            }
+        },
+    )
+    AddHybridInputTrigger(
+        this.ecs,
+        ebiten.KeySpace,
+        inputDelay,
+        inputFreq,
+        func() {
+            if this.options[this.displayOrder[this.selectIndex]].Toggle() {
+                asset.PlaySound(menuNoise)
+            }
+        },
+    )
+    AddHybridInputTrigger(
+        this.ecs,
+        ebiten.KeyRight,
+        inputDelay,
+        inputFreq,
+        func() {
+            if this.options[this.displayOrder[this.selectIndex]].Increment() {
+                asset.PlaySound(menuNoise)
+            }
+        },
+    )
+    AddHybridInputTrigger(
+        this.ecs,
+        ebiten.KeyLeft,
+        inputDelay,
+        inputFreq,
+        func() {
+            if this.options[this.displayOrder[this.selectIndex]].Decrement() {
+                asset.PlaySound(menuNoise)
+            }
+        },
+    )
+    return this
+}
+
+//TODO add some kind of pagination
+
+func (this *optionMenuData) AddOption( displayName string,
+                                       option Option) {
+    //append option
+    this.displayOrder = append(this.displayOrder, displayName)
+    this.options[displayName] = option
+
+    //create option text / label
+
+    //determine x alignment and value
+
+    var axt FontAlignX
+    var textX float64
+
+    //buttons should be centered
+    if option.GetType() == Button_optiontype {
+        axt = Center_fontalignx
+        textX = this.x
+    } else {
+        switch this.format.XAlign {
+        case Left_optionalignx:
+            axt = Left_fontalignx
+        case Right_optionalignx:
+            axt = Right_fontalignx
+        case Center_optionalignx:
+            axt = Center_fontalignx
+        case Inner_optionalignx:
+            axt = Right_fontalignx
+        case Outer_optionalignx:
+            axt = Left_fontalignx
+        }
+        textX = this.x - float64(this.format.Gap)
+    }
+
+    // create display name text
+    text := StringData{
+        String: displayName,
+        XAlign: axt,
+        YAlign: this.format.YAlign,
+        Kerning: this.format.Kerning,
+        Font: this.format.ItemFont,
+    }
+    AddSpriteText(
+        this.ecs, 
+        textX, 
+        0, //We'll set this later
+        this.view,
+        layer.HudForeground,
+        &text,
+    )
+    this.displayText[displayName] = &text
+
+    //add selector sprites for new option
+    //TODO should the positioning account for the selector size?
+    displayLength := float64(len(displayName) * asset.FontWidth + (len(displayName) - 1) * this.format.Kerning)
+    var leftX, rightX float64
+    selWidth := float64(asset.SpriteAssets[this.format.SelectSprite].File.FrameWidth)
+    switch text.XAlign {
+    case Left_fontalignx:
+        leftX = textX - selWidth/2.0 - float64(this.format.Kerning) - float64(this.format.SelectPad)
+        rightX = textX + displayLength + selWidth/2.0 + float64(this.format.Kerning) + float64(this.format.SelectPad -1)
+    case Center_fontalignx:
+        leftX = textX - displayLength/2.0 - selWidth/2.0 - float64(this.format.Kerning) - float64(this.format.SelectPad)
+        rightX = textX + displayLength/2.0 + selWidth/2.0 + float64(this.format.Kerning) + float64(this.format.SelectPad -1)
+    case Right_fontalignx:
+        leftX = textX - displayLength - selWidth - float64(this.format.Kerning) - float64(this.format.SelectPad)
+        rightX = textX + float64(this.format.Kerning) + float64(this.format.SelectPad -1)
+    }
+
+    //TODO FIX
+    this.lSelect[displayName] = AddSpriteObject(
+        this.ecs,
+        layer.HudForeground,
+        leftX,
+        0, //this will get updated later
+        this.format.SelectSprite,
+        "left",
+        this.view,
+    )
+    this.rSelect[displayName] = AddSpriteObject(
+        this.ecs,
+        layer.HudForeground,
+        rightX,
+        0, //this will get updated later
+        this.format.SelectSprite,
+        "right",
+        this.view,
+    )
+
+    //calculate display height for options
+    textHeight := len(this.displayOrder) * asset.FontHeight
+    spacingHeight := (len(this.displayOrder) - 1) * this.format.Spacing
+    displayHeight := float64(textHeight + spacingHeight)
+    if this.format.Title != "" {
+        displayHeight += asset.FontHeight + float64(this.format.Spacing) 
+    }
+
+    //set curY based on alignment options
+    var curY float64
+    switch this.format.YAlign {
+    case Top_fontaligny:
+        curY = this.y
+    case Middle_fontaligny:
+        curY = this.y - displayHeight/2.0
+    case Bottom_fontaligny:
+        curY = this.y - displayHeight
+    }
+    
+    //adjust title location
+    if this.format.Title != "" {
+        this.title.Y = curY
+        curY += asset.FontHeight + float64(this.format.Spacing)
+    }
+
+    //now go through and set all the position values as needed
+    for index, opt := range this.displayOrder {
+        dt := this.displayText[opt]
+        dt.Y = curY
+        this.displayText[opt] = dt
+
+        this.options[opt].SetPosition(this.x + float64(this.format.Gap), curY -1) //TODO why -1?
+
+        rsPos := component.Position.Get(this.ecs.World.Entry(*this.rSelect[opt]))
+        rsPos.Point.Y = curY
+        rsGO := component.GraphicObject.Get(this.ecs.World.Entry(*this.rSelect[opt]))
+        *rsGO.TransInfo.Hide = !(index == this.selectIndex)
+
+        lsPos := component.Position.Get(this.ecs.World.Entry(*this.lSelect[opt]))
+        lsPos.Point.Y = curY
+        lsGO := component.GraphicObject.Get(this.ecs.World.Entry(*this.lSelect[opt]))
+        *lsGO.TransInfo.Hide = !(index == this.selectIndex)
+
+        curY += asset.FontHeight + float64(this.format.Spacing)
+    }
 }

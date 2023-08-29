@@ -4,7 +4,7 @@ import (
 	//gMath "math"
 	//"math/rand"
 	//"strconv"
-
+	"github.com/infiniteyak/retro_engine/engine/asset"
 	"github.com/infiniteyak/retro_engine/engine/component"
 	//"github.com/infiniteyak/retro_engine/engine/entity"
 	"github.com/infiniteyak/retro_engine/engine/event"
@@ -39,7 +39,7 @@ func AddDot( ecs *ecs.ECS,
     this.ecs = ecs
 
     entity := this.ecs.Create(
-        layer.Foreground, 
+        layer.Background, 
         component.Position, 
         component.View,
         component.GraphicObject,
@@ -81,6 +81,8 @@ func AddDot( ecs *ecs.ECS,
 
         ree := event.RemoveEntity{Entity:this.entity}
         event.RemoveEntityEvent.Publish(this.ecs.World, ree)
+
+        asset.PlaySound("Bloop")
     })
 
     this.actions.AddUpkeepAction(func(){

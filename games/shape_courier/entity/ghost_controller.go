@@ -1,17 +1,10 @@
 package shape_courier_entity
 
 import (
-	//gMath "math"
-	//"math/rand"
-	//"strconv"
-
 	"github.com/infiniteyak/retro_engine/engine/component"
-	//"github.com/infiniteyak/retro_engine/engine/entity"
 	"github.com/infiniteyak/retro_engine/engine/event"
 	"github.com/yohamta/donburi"
 	"github.com/yohamta/donburi/ecs"
-	//"github.com/yohamta/donburi/features/math"
-    //"math"
 )
 
 const (
@@ -61,7 +54,6 @@ func AddGhostController(ecs *ecs.ECS, wave int, spawnGhost func(GhostVarient) *G
 
     despawn := func(w donburi.World, event event.DespawnAllEnemies) {
         this.ghostSpawnTimerMap = make(map[GhostVarient]int)
-        //this.actions.TriggerMap[component.DestroySilent_actionid] = true
     }
     event.DespawnAllEnemiesEvent.Subscribe(this.ecs.World, despawn)
     event.RegisterCleanupFuncEvent.Publish(
@@ -72,9 +64,12 @@ func AddGhostController(ecs *ecs.ECS, wave int, spawnGhost func(GhostVarient) *G
             },
         },
     )
+    round := 0
 
     respawn := func(w donburi.World, event event.RespawnEnemies) {
         this.curTime = 0
+        this.curMode = Scatter_aimode //Start in scatter
+        round = 0
         this.ghostSpawnTimerMap = make(map[GhostVarient]int)
         this.ghostSpawnTimerMap[ClassicRed_ghostvarient] = ghostColorDelayMap[ClassicRed_ghostvarient]
         this.ghostSpawnTimerMap[ClassicPink_ghostvarient] = ghostColorDelayMap[ClassicPink_ghostvarient]
@@ -92,17 +87,10 @@ func AddGhostController(ecs *ecs.ECS, wave int, spawnGhost func(GhostVarient) *G
     )
 
     if wave > len(scatterTimes) {
-        println("MAX WAVE")
         wave = len(scatterTimes) - 1
     } else {
         wave--
     }
-    round := 0
-
-    println("starting in scatter")
-    println(wave)
-    println(round)
-    println(scatterTimes[wave][round])
 
     // Actions
     this.actions = component.NewActions()
@@ -122,19 +110,11 @@ func AddGhostController(ecs *ecs.ECS, wave int, spawnGhost func(GhostVarient) *G
             this.curTime = 0
             this.curMode = Chase_aimode
             event.SetAiModeEvent.Publish(this.ecs.World, event.AiMode{Value:int(Chase_aimode)})
-            println("controller switch to chase")
-            println(wave)
-            println(round)
-            println(chaseTimes[wave][round])
         } else if this.curMode == Chase_aimode && this.curTime >= chaseTimes[wave][round] {
             this.curTime = 0
             this.curMode = Scatter_aimode
             event.SetAiModeEvent.Publish(this.ecs.World, event.AiMode{Value:int(Scatter_aimode)})
             round = (round + 1) % len(scatterTimes[wave])
-            println("controller switch to scatter")
-            println(wave)
-            println(round)
-            println(scatterTimes[wave][round])
         }
     })
 

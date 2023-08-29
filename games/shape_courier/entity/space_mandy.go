@@ -1,29 +1,22 @@
 package shape_courier_entity
 
 import (
-	//gMath "math"
-	//"math/rand"
-	//"strconv"
 	sc_comp "github.com/infiniteyak/retro_engine/games/shape_courier/component"
-
+	"github.com/infiniteyak/retro_engine/engine/asset"
 	"github.com/infiniteyak/retro_engine/engine/component"
-	//"github.com/infiniteyak/retro_engine/engine/entity"
 	"github.com/infiniteyak/retro_engine/engine/event"
 	"github.com/infiniteyak/retro_engine/engine/layer"
 	"github.com/infiniteyak/retro_engine/engine/utility"
 	"github.com/yohamta/donburi"
 	"github.com/yohamta/donburi/ecs"
-	// "github.com/yohamta/donburi/features/math"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
 const (
     spaceMandyDamage = 1.0
-
     spaceMandyColliderRadius = 4
     spaceMandyColliderOffsetX = 0
     spaceMandyColliderOffsetY = 0
-
     spaceMandySpriteName = "SpaceMandy"
     spaceMandySpriteInitialTag = "stand_down"
     spaceMandySpriteMoveLeftTag = "move_left"
@@ -36,31 +29,32 @@ const (
     spaceMandySpriteIdleDownTag = "stand_down"
     spaceMandySpriteDeathTag = "death"
     spaceMandySpriteDeadTag = "dead"
-
     spaceMandyMoveSpeed = 0.625
-    //spaceMandyTeleportCd = 400
 )
+
+type MandyOptions struct {
+    MoveSpeed float64
+}
+
+var MandyOptionsData MandyOptions = MandyOptions{
+    MoveSpeed: spaceMandyMoveSpeed,
+}
 
 type MandyData struct {
     ecs *ecs.ECS
     entry *donburi.Entry
     entity *donburi.Entity
-
     factions component.FactionsData
     damage component.DamageData
-    //health component.HealthData
     collider component.ColliderData
     position component.PositionData
     view component.ViewData
-    //velocity component.VelocityData
     graphicObject component.GraphicObjectData
     spriteData component.SpriteData
     actions component.ActionsData
     inputs component.InputsData
     mazeData *MazeData
-
     dir Direction
-    
     disableControls bool
     tpDestination sc_comp.DestinationData
     allowTp bool
@@ -81,7 +75,7 @@ var spaceMandyDirIdleMap = map[Direction]string {
 }
 
 func (this *MandyData) move(direction Direction) {
-    *this.position.Point, direction = this.mazeData.ResolveMove(*this.position.Point, direction, spaceMandyMoveSpeed)
+    *this.position.Point, direction = this.mazeData.ResolveMove(*this.position.Point, direction, MandyOptionsData.MoveSpeed)
     this.spriteData.Play(spaceMandyDirMoveMap[direction])
     this.dir = direction
 }
@@ -89,8 +83,6 @@ func (this *MandyData) move(direction Direction) {
 func AddSpaceMandy( ecs *ecs.ECS,
               view *utility.View,
               md *MazeData) *MandyData {
-    println("ADDING PLAYER")
-
     this := &MandyData{}
     this.ecs = ecs
 
@@ -177,6 +169,8 @@ func AddSpaceMandy( ecs *ecs.ECS,
         this.actions.TriggerMap[component.Destroy_actionid] = false
         this.disableControls = true
 
+        asset.PlaySound("GameOver")
+
         //adjust lives count (and note if it's game over)
 
         //despawn ghosts
@@ -206,14 +200,14 @@ func AddSpaceMandy( ecs *ecs.ECS,
     // Teleport
     this.actions.AddNormalAction(component.Teleport_actionid, func(){
         if this.allowTp {
+            asset.PlaySound("Transporter")
+
             this.allowTp = false
             *this.collider.Enable = false
             this.disableControls = true
             this.spriteData.Play("teleport_out")
             this.spriteData.SetLoopCallback(func() {
-                //*this.spriteData.RenderableData.GetTransInfo().Hide = true
                 this.spriteData.Play("teleport_in")
-                //this.position.Point.X -= 20
                 this.position.Point.X = this.tpDestination.Point.X
                 this.position.Point.Y = this.tpDestination.Point.Y
                 this.spriteData.SetLoopCallback(func() {
@@ -225,7 +219,6 @@ func AddSpaceMandy( ecs *ecs.ECS,
             })
         }
         this.actions.TriggerMap[component.Teleport_actionid] = false
-        //this.actions.ResetCooldown(component.Teleport_actionid)
     })
 
     this.actions.AddUpkeepAction(func(){

@@ -3,12 +3,11 @@ package game
 import (
 	"os"
 	"github.com/infiniteyak/retro_engine/games/shape_courier/asset"
+	sc_system "github.com/infiniteyak/retro_engine/games/shape_courier/system"
 	"github.com/infiniteyak/retro_engine/engine/system"
-
 	"github.com/infiniteyak/retro_engine/engine/scene"
     "github.com/infiniteyak/retro_engine/engine/layer"
 	"github.com/infiniteyak/retro_engine/engine/utility"
-
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/yohamta/donburi"
 	"github.com/yohamta/donburi/ecs"
@@ -74,7 +73,8 @@ func NewGame(width, height float64) *Game {
     this.ecs.AddSystem(system.ViewBound.Update)
     this.ecs.AddSystem(system.PosTween.Update)
     this.ecs.AddSystem(system.Wrap.Update)
-    this.ecs.AddSystem(system.Collisions.Update)
+    //this.ecs.AddSystem(system.Collisions.Update)
+    this.ecs.AddSystem(sc_system.Collisions.Update)
 
     this.ecs.AddSystem(system.AnimateGraphicObjects.Update)
     this.ecs.AddSystem(system.Input.Update)

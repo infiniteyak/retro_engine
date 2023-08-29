@@ -1,18 +1,13 @@
 package shape_courier_entity
 
 import (
-	//gMath "math"
 	"math/rand"
-	//"strconv"
-
 	"github.com/infiniteyak/retro_engine/engine/component"
 	"github.com/infiniteyak/retro_engine/engine/entity"
-	//"github.com/infiniteyak/retro_engine/engine/event"
 	"github.com/infiniteyak/retro_engine/engine/layer"
 	"github.com/infiniteyak/retro_engine/engine/utility"
 	"github.com/yohamta/donburi"
 	"github.com/yohamta/donburi/ecs"
-	//"github.com/yohamta/donburi/features/math"
     "math"
 )
 
@@ -39,16 +34,12 @@ type MazeData struct {
     ecs *ecs.ECS
     entry *donburi.Entry
     entity *donburi.Entity
-
     view component.ViewData
-
     grid [][]GridSpace
     gridRows int
     gridColumns int
-
     StartR int
     StartC int
-    
     SpawnR int
     SpawnC int
 }
@@ -125,6 +116,7 @@ func (this *MazeData) GetRandomDirection(pos utility.Point, curDir Direction) Di
     }
     return selected
 }
+
 // what direction is closest to target, avoiding turning around completely
 func (this *MazeData) GetDirectionToTarget(pos utility.Point, target utility.Point, curDir Direction) Direction {
     r, c := this.FindCoordinates(pos)
@@ -284,7 +276,6 @@ func (this *MazeData) PickDirection(pos utility.Point,
     r, c := this.FindCoordinates(pos)
 
     var aSolid bool
-    //var bSolid bool
 
     switch dirA {
     case North_direction:
@@ -432,7 +423,6 @@ func AddMaze( ecs *ecs.ECS,
     this := &MazeData{}
     this.ecs = ecs
     
-    //start_offset := initialMazeOffset
     sw := wallSpriteWidth
     sh := wallSpriteHeight
     this.gridColumns = 28
@@ -485,9 +475,7 @@ func AddMaze( ecs *ecs.ECS,
         var curOffsetX float64 = initialMazeOffsetX
         this.grid[r] = make([]GridSpace, this.gridColumns)
         for c := 0; c < this.gridColumns; c++ {
-            //wType := Undefined_walltype
             if pattern[r][c] == 1 {
-                //wType = Solid_walltype
                 isSolid := func(y int, x int) bool {
                     if x < 0 || y < 0 || x >= this.gridColumns || y >= this.gridRows {
                         return true
@@ -563,56 +551,18 @@ func AddMaze( ecs *ecs.ECS,
                     this.StartC = c
                 }
                 if pattern[r][c] == 0 { //TODO fix
-                    /*
-                    entity.AddSpriteObject(
-                        ecs, 
-                        layer.Background, 
-                        curOffsetX, 
-                        curOffsetY, 
-                        "Items", 
-                        "basic_dot", 
-                        view,
-                    )
-                    */
                     AddDot(ecs, curOffsetX, curOffsetY, view)
                 }
                 if pattern[r][c] == 4 { //TODO fix
-                    /*
-                    entity.AddSpriteObject(
-                        ecs, 
-                        layer.Background, 
-                        curOffsetX, 
-                        curOffsetY, 
-                        "Items", 
-                        "dot", 
-                        view,
-                    )
-                    */
                     AddPower(ecs, curOffsetX, curOffsetY, view)
                 }
                 if pattern[r][c] == 3 { // teleporter A
                     teleportAOffsetX = curOffsetX
                     teleportAOffsetY = curOffsetY
-                    /*
-                    AddTeleporter(
-                        ecs, 
-                        curOffsetX, 
-                        curOffsetY, 
-                        view,
-                    )
-                    */
                 }
                 if pattern[r][c] == 5 { // teleporter B
                     teleportBOffsetX = curOffsetX
                     teleportBOffsetY = curOffsetY
-                    /*
-                    AddTeleporter(
-                        ecs, 
-                        curOffsetX, 
-                        curOffsetY, 
-                        view,
-                    )
-                    */
                 }
                 if pattern[r][c] == 6 { // Allow tp
                     AddActionTrigger(
@@ -626,14 +576,6 @@ func AddMaze( ecs *ecs.ECS,
                 if pattern[r][c] == 7 { // ghost
                     this.SpawnR = r
                     this.SpawnC = c
-                    /*
-                    AddGhost(
-                        this.ecs, 
-                        curOffsetX, 
-                        curOffsetY, 
-                        view,
-                        this)
-                    */
                 }
             } 
             curOffsetX += sw
@@ -661,7 +603,149 @@ func AddMaze( ecs *ecs.ECS,
         view,
     )
 
-    //entity.AddSpriteObject(ecs, layer.Background, x, y, "Wall", "NES", view)
+    return this
+}
+
+func AddDecorativeMaze( ecs *ecs.ECS,
+              x, y float64,
+              view *utility.View) *MazeData {
+    this := &MazeData{}
+    this.ecs = ecs
+    
+    sw := wallSpriteWidth
+    sh := wallSpriteHeight
+    this.gridColumns = 28
+    this.gridRows = 33
+
+    this.grid = make([][]GridSpace, this.gridRows)
+
+    pattern := [][]int {
+        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,},
+        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,},
+        {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,},
+        {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,},
+        {0, 0, 0, 0, 0, 0, 1, 1, 9, 9, 9, 9, 4, 1, 1, 4, 9, 9, 9, 9, 1, 1, 0, 0, 0, 0, 0, 0,},
+        {0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 9, 1, 1, 9, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0,},
+        {0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 9, 1, 1, 9, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0,},
+        {0, 0, 0, 1, 1, 9, 9, 9, 9, 9, 1, 1, 9, 1, 1, 9, 1, 1, 9, 9, 9, 9, 9, 1, 1, 0, 0, 0,},
+        {0, 0, 0, 1, 1, 1, 1, 1, 1, 9, 1, 1, 9, 1, 1, 9, 1, 1, 9, 1, 1, 1, 1, 1, 1, 0, 0, 0,},
+        {0, 0, 0, 1, 1, 1, 1, 1, 1, 9, 1, 1, 9, 1, 1, 9, 1, 1, 9, 1, 1, 1, 1, 1, 1, 0, 0, 0,},
+        {0, 0, 0, 9, 9, 9, 9, 9, 9, 4, 1, 1, 9, 1, 1, 9, 1, 1, 4, 9, 9, 9, 9, 9, 9, 0, 0, 0,},
+        {0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 9, 1, 1, 9, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0,},
+        {0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 9, 1, 1, 9, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0,},
+        {0, 9, 1, 1, 4, 9, 9, 9, 9, 9, 9, 9, 9, 1, 1, 9, 9, 9, 9, 9, 9, 9, 9, 4, 1, 1, 9, 0,},
+        {1, 9, 1, 1, 9, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 9, 1, 1, 9, 1,},
+        {1, 9, 1, 1, 9, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 9, 1, 1, 9, 1,},
+        {1, 4, 1, 1, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 1, 1, 4, 1,},
+        {1, 9, 1, 1, 9, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 9, 1, 1, 9, 1,},
+        {1, 9, 1, 1, 9, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 9, 1, 1, 9, 1,},
+        {0, 9, 1, 1, 4, 9, 9, 9, 9, 9, 9, 9, 9, 1, 1, 9, 9, 9, 9, 9, 9, 9, 9, 4, 1, 1, 9, 0,},
+        {0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 9, 1, 1, 9, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0,},
+        {0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 9, 1, 1, 9, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0,},
+        {0, 0, 0, 9, 9, 9, 9, 9, 9, 4, 1, 1, 9, 1, 1, 9, 1, 1, 4, 9, 9, 9, 9, 9, 9, 0, 0, 0,},
+        {0, 0, 0, 1, 1, 1, 1, 1, 1, 9, 1, 1, 9, 1, 1, 9, 1, 1, 9, 1, 1, 1, 1, 1, 1, 0, 0, 0,},
+        {0, 0, 0, 1, 1, 1, 1, 1, 1, 9, 1, 1, 9, 1, 1, 9, 1, 1, 9, 1, 1, 1, 1, 1, 1, 0, 0, 0,},
+        {0, 0, 0, 1, 1, 9, 9, 9, 9, 9, 1, 1, 9, 1, 1, 9, 1, 1, 9, 9, 9, 9, 9, 1, 1, 0, 0, 0,},
+        {0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 9, 1, 1, 9, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0,},
+        {0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 9, 1, 1, 9, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0,},
+        {0, 0, 0, 0, 0, 0, 1, 1, 9, 9, 9, 9, 4, 1, 1, 4, 9, 9, 9, 9, 1, 1, 0, 0, 0, 0, 0, 0,},
+        {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,},
+        {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,},
+        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,},
+        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,},
+    }
+
+    var curOffsetY float64 = initialMazeOffsetY
+    for r := 0; r < this.gridRows; r++ {
+        var curOffsetX float64 = initialMazeOffsetX
+        this.grid[r] = make([]GridSpace, this.gridColumns)
+        for c := 0; c < this.gridColumns; c++ {
+            if pattern[r][c] == 1 {
+                isSolid := func(y int, x int) bool {
+                    if x < 0 || y < 0 || x >= this.gridColumns || y >= this.gridRows {
+                        return true
+                    }
+                    if pattern[y][x] == 1 {
+                        return true
+                    }
+                    return false
+                }
+                
+                north := isSolid(r-1, c)
+                east := isSolid(r, c+1)
+                south := isSolid(r+1, c)
+                west := isSolid(r, c-1)
+
+                tag := ""
+                if north {
+                    tag = tag + "N"
+                }
+                if east {
+                    tag = tag + "E"
+                }
+                if south {
+                    tag = tag + "S"
+                }
+                if west {
+                    tag = tag + "W"
+                }
+                if tag == "NESW" {
+                    if !isSolid(r-1, c-1) {
+                        tag = "NW"
+                    } else if !isSolid(r-1, c+1) {
+                        tag = "NE"
+                    } else if !isSolid(r+1, c+1) {
+                        tag = "ES"
+                    } else if !isSolid(r+1, c-1) {
+                        tag = "SW"
+                    } else {
+                        tag = ""
+                    }
+                }
+                if tag == "" {
+                    tag = "_"
+                }
+
+                this.grid[r][c] = GridSpace{
+                    Center: utility.Point{
+                        X: curOffsetX,
+                        Y: curOffsetY,
+                    },
+                    Solid: true,
+                }
+
+                entity.AddSpriteObject(
+                    ecs, 
+                    layer.Background, 
+                    curOffsetX, 
+                    curOffsetY, 
+                    "Wall", 
+                    tag, 
+                    view,
+                )
+            } else {
+                this.grid[r][c] = GridSpace{
+                    Center: utility.Point{
+                        X: curOffsetX,
+                        Y: curOffsetY,
+                    },
+                    Solid: false,
+                }
+                if pattern[r][c] == 2 {
+                    this.StartR = r
+                    this.StartC = c
+                }
+                if pattern[r][c] == 9 { //TODO fix
+                    AddDot(ecs, curOffsetX, curOffsetY, view)
+                }
+                if pattern[r][c] == 4 { //TODO fix
+                    AddPower(ecs, curOffsetX, curOffsetY, view)
+                }
+            } 
+            curOffsetX += sw
+        }
+        curOffsetY += sh
+    }
 
     return this
 }

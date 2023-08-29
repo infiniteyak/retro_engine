@@ -1,19 +1,13 @@
 package shape_courier_entity
 
 import (
-	//gMath "math"
-	//"math/rand"
-	//"strconv"
-
+	"github.com/infiniteyak/retro_engine/engine/asset"
 	"github.com/infiniteyak/retro_engine/engine/component"
-	//"github.com/infiniteyak/retro_engine/engine/entity"
 	"github.com/infiniteyak/retro_engine/engine/event"
 	"github.com/infiniteyak/retro_engine/engine/layer"
 	"github.com/infiniteyak/retro_engine/engine/utility"
 	"github.com/yohamta/donburi"
 	"github.com/yohamta/donburi/ecs"
-	//"github.com/yohamta/donburi/features/math"
-    //"math"
 )
 
 const (
@@ -84,6 +78,7 @@ func AddPower( ecs *ecs.ECS,
 
         ree := event.RemoveEntity{Entity:this.entity}
         event.RemoveEntityEvent.Publish(this.ecs.World, ree)
+        asset.PlaySound("Powerup")
     })
 
     this.actions.AddUpkeepAction(func(){

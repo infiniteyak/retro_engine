@@ -133,7 +133,6 @@ func AddGameMenu(   ecs *ecs.ECS,
         inputDelay,
         inputFreq,
         func() {
-            println("up")
             oldIndex := this.selectIndex
             this.selectIndex--
             if this.selectIndex < 0 {
@@ -151,7 +150,6 @@ func AddGameMenu(   ecs *ecs.ECS,
         inputDelay,
         inputFreq,
         func() {
-            println("down")
             oldIndex := this.selectIndex
             this.selectIndex = (this.selectIndex + 1) % len(display)
             if oldIndex != this.selectIndex {
