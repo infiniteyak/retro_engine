@@ -13,8 +13,6 @@ import (
     "math/rand"
 )
 
-// TODO split this stuff up into multiple files!
-
 type TransformInfo struct {
     Rotation *float64 //radians
     Scale *float64
